@@ -3,14 +3,22 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	sleep,
 } from 'n8n-workflow';
-import FormData from 'form-data';
+
+// Avoid restricted globals (globalThis) and external deps (form-data)
+// Rely on Node 18+ built-in FormData/Blob. TS may not know these in some configs.
+declare const FormData: any;
+declare const Blob: any;
 
 export class PalatineNode implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Palatine Speech',
 		name: 'palatineNode',
-		icon: 'file:logo.svg',
+		icon: {
+			light: 'file:logo.svg',
+			dark: 'file:logo2.svg',
+		},
 		group: ['transform'],
 		version: 1,
 		description: 'Transcribe, diarize, analyze sentiment or summarize audio using Palatine API',
@@ -22,21 +30,21 @@ export class PalatineNode implements INodeType {
 		credentials: [{ name: 'palatineNodeApi', required: true }],
 		properties: [
 			{
-				displayName: 'Binary Property',
+				displayName: 'File',
 				name: 'binaryProperty',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary property that contains the audio file',
+				description: 'Input audio file for operations',
 			},
 			{
 				displayName: 'Task',
 				name: 'task',
 				type: 'options',
 				options: [
-					{ name: 'Transcribe', value: 'transcribe' },
-					{ name: 'Diarize', value: 'diarize' },
-					{ name: 'Sentiment Analysis', value: 'sentiment' },
-					{ name: 'Summarize', value: 'summarize' },
+					{ name: 'Transcribe', value: 'transcribe', description: 'Speech to text' },
+					{ name: 'Diarize', value: 'diarize', description: 'Audio tagging by speakers and timecodes' },
+					{ name: 'Sentiment Analysis', value: 'sentiment', description: 'Determines emotional tone in audio' },
+					{ name: 'Summarize', value: 'summarize', description: 'Provides summarization of audio files in various formats' },
 				],
 				default: 'transcribe',
 				description: 'Choose: transcribe, diarize, analyze sentiment or summarize',
@@ -46,8 +54,8 @@ export class PalatineNode implements INodeType {
 				name: 'model',
 				type: 'options',
 				options: [
-					{ name: 'palatine_small', value: 'palatine_small' },
-					{ name: 'palatine_large_turbo', value: 'palatine_large_turbo' },
+					{ name: 'palatine_small', value: 'palatine_small', description: 'Work faster' },
+					{ name: 'palatine_large_turbo', value: 'palatine_large_turbo', description: 'More accurate model' },
 				],
 				default: 'palatine_small',
 				description: 'Model (applies to all tasks)',
@@ -59,11 +67,11 @@ export class PalatineNode implements INodeType {
 				name: 'summarizeTask',
 				type: 'options',
 				options: [
-					{ name: 'Meeting Summary', value: 'meeting_summary' },
-					{ name: 'User Prompt', value: 'user_prompt' },
+					{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Automatic transcription of meeting, interview, or call' },
+					{ name: 'User Prompt', value: 'user_prompt', description: 'A custom prompt for LLM model. For example, "Separately highlight new implementation ideas"' },
 				],
 				default: 'user_prompt',
-				description: 'Summarization task (sent as query parameter)',
+				description: 'Summarization task',
 				displayOptions: {
 					show: {
 						task: ['summarize'],
@@ -75,7 +83,7 @@ export class PalatineNode implements INodeType {
 				name: 'summarizePrompt',
 				type: 'string',
 				default: '',
-				description: 'Used only when AI Task = "User Prompt". If empty, "*" will be sent as fallback.',
+				description: 'For example, "Structure conversation by topic". If empty, It will be transcription.',
 				displayOptions: {
 					show: {
 						task: ['summarize'],
@@ -88,7 +96,7 @@ export class PalatineNode implements INodeType {
 				name: 'summarizeThinking',
 				type: 'boolean',
 				default: false,
-				description: 'Thinking mode (sent as query parameter)',
+				description: 'Enables advanced model reasoning mode',
 				displayOptions: {
 					show: {
 						task: ['summarize'],
@@ -106,8 +114,7 @@ export class PalatineNode implements INodeType {
 		const maxPollAttempts = 150;
 
 		const extractTaskId = (resp: any): string | undefined => {
-			if (!resp) return undefined;
-			if (typeof resp === 'string') return undefined;
+			if (!resp || typeof resp !== 'object') return undefined;
 			return resp.task_id || resp.taskId || resp.id || resp.task?.id;
 		};
 
@@ -181,11 +188,8 @@ export class PalatineNode implements INodeType {
 					summarizeTask = this.getNodeParameter('summarizeTask', i) as string;
 					summarizeThinking = this.getNodeParameter('summarizeThinking', i) as boolean;
 
-					// safe read: summarizePrompt exists only when summarizeTask=user_prompt
 					if (summarizeTask === 'user_prompt') {
 						summarizePromptRaw = this.getNodeParameter('summarizePrompt', i, { fallbackValue: '' }) as string;
-					} else {
-						summarizePromptRaw = '';
 					}
 				}
 
@@ -194,63 +198,27 @@ export class PalatineNode implements INodeType {
 					throw new Error(`No binary data in property "${binaryProperty}"`);
 				}
 
-				// ✅ Credentials (tied to PalatineNodeApi.credentials.ts)
 				const credentials = await this.getCredentials('palatineNodeApi');
-				const baseUrl = (credentials.baseUrl as string).replace(/\/$/, '');
-				const apiKey = credentials.apiKey as string;
+				const baseUrl = String(credentials.baseUrl).replace(/\/$/, '');
+				const apiKey = String(credentials.apiKey);
 
 				const audioBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 				let url: string;
-				let form: FormData;
-				let response: any;
 
 				switch (task) {
 					case 'transcribe':
-						form = new FormData();
-						form.append('file', audioBuffer, {
-							filename: binaryData.fileName || 'audio',
-							contentType: binaryData.mimeType || 'audio/mpeg',
-						});
-						form.append('model', model);
 						url = `${baseUrl}/api/v1/audio/transcriptions`;
 						break;
-
 					case 'diarize':
-						form = new FormData();
-						form.append('file', audioBuffer, {
-							filename: binaryData.fileName || 'audio',
-							contentType: binaryData.mimeType || 'audio/mpeg',
-						});
-						form.append('model', model);
 						url = `${baseUrl}/api/v1/diarization/do_diarize`;
 						break;
-
 					case 'sentiment':
-						form = new FormData();
-						form.append('file', audioBuffer, {
-							filename: binaryData.fileName || 'audio',
-							contentType: binaryData.mimeType || 'audio/mpeg',
-						});
-						form.append('model', model);
 						url = `${baseUrl}/api/v1/sentiment_analysis/analyze_file`;
 						break;
-
 					case 'summarize': {
-						if (!summarizeTask) {
-							throw new Error('Summarize: summarizeTask is missing');
-						}
+						if (!summarizeTask) throw new Error('Summarize: summarizeTask is missing');
 
-						form = new FormData();
-						form.append('file', audioBuffer, {
-							filename: binaryData.fileName || 'audio',
-							contentType: binaryData.mimeType || 'audio/mpeg',
-						});
-						form.append('model', model);
-
-						// Smart prompt logic:
-						// - meeting_summary → always "*"
-						// - user_prompt → user input OR "*" if empty
 						const promptToSend =
 							summarizeTask === 'meeting_summary'
 								? '*'
@@ -264,30 +232,48 @@ export class PalatineNode implements INodeType {
 						});
 						break;
 					}
-
 					default:
 						throw new Error(`Unknown task: ${task}`);
 				}
 
-				response = await this.helpers.httpRequest({
+				// --- multipart via built-in FormData/Blob (no external deps, no globalThis) ---
+				if (typeof FormData === 'undefined' || typeof Blob === 'undefined') {
+					throw new Error(
+						'FormData/Blob are not available in this runtime. Ensure Node.js 18+ / compatible n8n runtime.',
+					);
+				}
+
+				const form = new FormData();
+				const fileName = binaryData.fileName || 'audio';
+				const mimeType = binaryData.mimeType || 'audio/mpeg';
+
+				const fileBlob = new Blob([audioBuffer], { type: mimeType });
+				form.append('file', fileBlob, fileName);
+				form.append('model', model);
+
+				const createResp = await this.helpers.httpRequest({
 					method: 'POST',
 					url,
 					headers: {
-						...form.getHeaders(),
 						Authorization: `Bearer ${apiKey}`,
 					},
-					body: form,
+					body: form as any,
 					json: true,
 				});
 
+				let finalResponse: any = createResp;
+
 				// 🔁 Poll for async tasks (non-transcribe)
 				if (task !== 'transcribe') {
-					const taskId = extractTaskId(response);
+					const taskId = extractTaskId(createResp);
 
 					if (taskId) {
+						// NOTE: If Palatine uses different status endpoints per task, adjust here.
 						const statusUrl = `${baseUrl}/api/v1/transcribe/task_status/${taskId}`;
 
 						let statusPayload: any = null;
+						let completed = false;
+
 						for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
 							statusPayload = await this.helpers.httpRequest({
 								method: 'GET',
@@ -307,14 +293,16 @@ export class PalatineNode implements INodeType {
 							}
 
 							if (isTerminalSuccess(statusPayload)) {
-								response = unwrapFinalPayload(statusPayload);
+								finalResponse = unwrapFinalPayload(statusPayload);
+								completed = true;
 								break;
 							}
 
-							await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+							// ✅ allowed alternative to setTimeout in community nodes
+							await sleep(pollIntervalMs);
 						}
 
-						if (!isTerminalSuccess({ result: response, status: response?.status, state: response?.state })) {
+						if (!completed) {
 							throw new Error(
 								`Task ${taskId} did not complete within polling limit (${maxPollAttempts} attempts)`,
 							);
@@ -331,18 +319,18 @@ export class PalatineNode implements INodeType {
 
 				if (task === 'transcribe') {
 					result.transcription =
-						typeof response === 'string'
-							? response.trim()
-							: (response?.text || response?.transcription || '');
+						typeof finalResponse === 'string'
+							? finalResponse.trim()
+							: (finalResponse?.text || finalResponse?.transcription || '');
 				} else if (task === 'diarize') {
-					result.diarization = response;
+					result.diarization = finalResponse;
 				} else if (task === 'sentiment') {
-					result.sentiment = response;
+					result.sentiment = finalResponse;
 				} else if (task === 'summarize') {
 					result.summary =
-						typeof response === 'string'
-							? response
-							: (response?.summary || response?.result || response?.text || response);
+						typeof finalResponse === 'string'
+							? finalResponse
+							: (finalResponse?.summary || finalResponse?.result || finalResponse?.text || finalResponse);
 				}
 
 				returnData.push({
