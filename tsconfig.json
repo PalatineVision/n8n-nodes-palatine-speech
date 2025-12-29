@@ -1,18 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es2021",
+    "target": "ES2022",
     "module": "commonjs",
-    "lib": ["es2021"],
+    "lib": ["ES2022", "DOM"],
     "declaration": true,
-    "outDir": "./dist",
-    "rootDir": "./",
+    "outDir": "dist",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
-    "resolveJsonModule": true
-  },
-  "include": ["credentials/**/*", "nodes/**/*"],
-  "exclude": ["node_modules", "dist"]
+    "skipLibCheck": true
+  }
 }
