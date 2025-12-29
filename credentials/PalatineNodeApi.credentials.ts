@@ -1,7 +1,7 @@
 import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class PalatineNodeApi implements ICredentialType {
-	name = 'palatineNodeApi';
+export class PalatineSpeechNodeApi implements ICredentialType {
+	name = 'PalatineSpeechNodeApi';
 	displayName = 'Palatine Speech API';
 	documentationUrl = 'https://docs.speech.palatine.ru/api-reference';
 
