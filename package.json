@@ -29,7 +29,7 @@
   ],
   "scripts": {
     "build": "tsc && npm run copy:assets",
-    "copy:assets": "node -e \"const fs=require('fs');const path=require('path');const files=['logoLight.svg','logoDark.svg'];const srcDir=path.join('nodes','PalatineNode');const dstDir=path.join('dist','nodes','PalatineSpeechNode');fs.mkdirSync(dstDir,{recursive:true});let ok=true;for(const f of files){const src=path.join(srcDir,f);const dst=path.join(dstDir,f);if(!fs.existsSync(src)){console.error('ERROR:',f,'not found at',src);ok=false;continue;}fs.copyFileSync(src,dst);console.log('OK: copied',src,'->',dst);}if(!ok) process.exit(1);\"",
+    "copy:assets": "node -e \"const fs=require('fs');const path=require('path');const files=['logoLight.svg','logoDark.svg'];const srcDir=path.join('nodes','PalatineSpeechNode');const dstDir=path.join('dist','nodes','PalatineSpeechNode');fs.mkdirSync(dstDir,{recursive:true});let ok=true;for(const f of files){const src=path.join(srcDir,f);const dst=path.join(dstDir,f);if(!fs.existsSync(src)){console.error('ERROR:',f,'not found at',src);ok=false;continue;}fs.copyFileSync(src,dst);console.log('OK: copied',src,'->',dst);}if(!ok) process.exit(1);\"",
     "dev": "tsc --watch",
 
     "prepack": "npm run build",
@@ -40,7 +40,7 @@
       "dist/credentials/PalatineSpeechNodeApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/PalatineNode/PalatineSpeechNode.node.js"
+      "dist/nodes/PalatineSpeechNode/PalatineSpeechNode.node.js"
     ]
   },
   "dependencies": {},
