@@ -11,7 +11,7 @@
 
   "scripts": {
     "build": "tsc && npm run copy:assets",
-    "copy:assets": "node -e \"const fs=require('fs');const path=require('path');const src=path.join('nodes','PalatineNode','logo.svg');const dstDir=path.join('dist','nodes','PalatineNode');const dst=path.join(dstDir,'logo.svg');if(!fs.existsSync(src)){console.error('ERROR: logo.svg not found at',src);process.exit(1);}fs.mkdirSync(dstDir,{recursive:true});fs.copyFileSync(src,dst);console.log('OK: copied',src,'->',dst);\"",
+    "copy:assets": "node -e \"const fs=require('fs');const path=require('path');const files=['logo.svg','logo2.svg'];const srcDir=path.join('nodes','PalatineNode');const dstDir=path.join('dist','nodes','PalatineNode');fs.mkdirSync(dstDir,{recursive:true});let ok=true;for(const f of files){const src=path.join(srcDir,f);const dst=path.join(dstDir,f);if(!fs.existsSync(src)){console.error('ERROR:',f,'not found at',src);ok=false;continue;}fs.copyFileSync(src,dst);console.log('OK: copied',src,'->',dst);}if(!ok) process.exit(1);\"",
     "dev": "tsc --watch"
   },
 
