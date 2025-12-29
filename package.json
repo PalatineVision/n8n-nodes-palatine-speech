@@ -1,24 +1,46 @@
 {
   "name": "n8n-nodes-palatine",
-  "version": "0.1.0",
-  "description": "Custom n8n node for Palatine Speech API: transcription, diarization, sentiment analysis, summarization",
-  "keywords": ["n8n", "custom", "node", "palatine", "asr", "speech", "n8n-community-node-package"],
+  "version": "0.1.7",
+  "description": "Custom n8n node for Palatine Speech API: transcription, diarization, sentiment analysis, summarization and more",
+  "keywords": [
+  "n8n-community-node-package",
+  "n8n",
+  "palatine",
+  "speech-to-text",
+  "transcribe",
+  "transcription",
+  "stt",
+  "audio",
+  "ai",
+  "automation",
+  "voice-to-text",
+  "speech-recognition",
+  "audio-transcription",
+  "audio2text",
+  "audio-processing",
+  "diarization"
+  ],
   "license": "MIT",
-  "author": "Denis",
+  "author": "palatine-vision",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc && npm run copy:assets",
-    "copy:assets": "node -e \"const fs=require('fs');const path=require('path');const files=['logo.svg','logo2.svg'];const srcDir=path.join('nodes','PalatineNode');const dstDir=path.join('dist','nodes','PalatineNode');fs.mkdirSync(dstDir,{recursive:true});let ok=true;for(const f of files){const src=path.join(srcDir,f);const dst=path.join(dstDir,f);if(!fs.existsSync(src)){console.error('ERROR:',f,'not found at',src);ok=false;continue;}fs.copyFileSync(src,dst);console.log('OK: copied',src,'->',dst);}if(!ok) process.exit(1);\"",
-    "dev": "tsc --watch"
+    "copy:assets": "node -e \"const fs=require('fs');const path=require('path');const files=['logoLight.svg','logoDark.svg'];const srcDir=path.join('nodes','PalatineNode');const dstDir=path.join('dist','nodes','PalatineSpeechNode');fs.mkdirSync(dstDir,{recursive:true});let ok=true;for(const f of files){const src=path.join(srcDir,f);const dst=path.join(dstDir,f);if(!fs.existsSync(src)){console.error('ERROR:',f,'not found at',src);ok=false;continue;}fs.copyFileSync(src,dst);console.log('OK: copied',src,'->',dst);}if(!ok) process.exit(1);\"",
+    "dev": "tsc --watch",
+
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run build"
   },
   "n8n": {
     "credentials": [
-      "dist/credentials/PalatineNodeApi.credentials.js"
+      "dist/credentials/PalatineSpeechNodeApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/PalatineNode/PalatineNode.node.js"
+      "dist/nodes/PalatineNode/PalatineSpeechNode.node.js"
     ]
   },
   "dependencies": {},
