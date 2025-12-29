@@ -1,4 +1,4 @@
-![README banner](https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/hat%20(2).png)
+![README banner](https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/hat.png)
 
 # n8n-nodes-palatine-speech
 
