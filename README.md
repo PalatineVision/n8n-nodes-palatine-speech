@@ -1,138 +1,102 @@
-![hat of ReadME](https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/hat.png)
+![README banner](https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/hat.png)
 
 # n8n-nodes-palatine-speech
 
+> Designed for seamless integration of the **Palatine Speech API** into n8n workflows.
 
-> Разработано для бесшовной интеграции **Palatine Speech API** в воркфлоу n8n.
+This is an n8n community node that integrates [Palatine Speech](https://speech.palatine.ru/) into your workflows and enables audio processing tasks such as transcription, diarization, sentiment analysis, and summarization.
 
+## Navigation
 
-Это community нода n8n, которая интегрирует [Palatine Speech](https://speech.palatine.ru/) в ваш воркфлоу n8n, предоставляя возможность обрабатывать аудио файлы: проводить транскрибацию, диаризацию, анализ тональности и суммаризацию напрямую в воркфлоу n8n — без необходимости вручную настраивать HTTP-запросы.
+[Supported Operations](#supported-operations)\
+[Installation](#installation)\
+[Credentials](#credentials)\
+[Workflow Example](#workflow-example)\
+[Use Cases](#use-cases) \
+[Compatibility](#compatibility)\
+[Useful Resources](#useful-resources)\
+[Keywords](#keywords)
 
-## Навигация
+[Russian version of README]
 
-[Поддерживаемые задачи (Tasks)](#поддерживаемые-задачи-tasks)\
-[Выбор модели](#выбор-модели)\
-[Особенности](#особенности)\
-[Установка](#установка)\
-[Учётные данные (Credentials)](#учётные-данные-credentials)\
-[Пример воркфлоу](#пример-воркфлоу)\
-[Варианты использования](#варианты-использования) \
-[Совместимость](#совместимость)\
-[Полезные ресурсы](#полезные-ресурсы)\
-[Ключевые слова](#ключевые-слова)
+## Supported Operations
 
+For details on each operation, see the [Palatine Speech documentation](https://docs.speech.palatine.ru/documentation/quick_start/transcription). You can also open the documentation by clicking the operation title below.
 
-##  Поддерживаемые задачи (Tasks)
+* [Full list of supported file types](https://docs.speech.palatine.ru/documentation/technical_information/supported_files)
+* [Full list of supported languages](https://docs.speech.palatine.ru/documentation/technical_information/supported_languages)
 
-Подробнее о каждой задаче можно узнать из документации Palatine Speech, кликнув на ее название
-* [Полный список поддерживаемых файлов доступе по ссылке](https://docs.speech.palatine.ru/documentation/technical_information/supported_files)
-* [Полный список поддерживаемых языков доступе по ссылке](https://docs.speech.palatine.ru/documentation/technical_information/supported_languages)
+### [Transcribe — speech transcription](https://docs.speech.palatine.ru/documentation/quick_start/transcription)
 
-###  [Transcribe — транскрибация речи](https://docs.speech.palatine.ru/documentation/quick_start/transcription)
+Speech-to-Text (STT) converts audio/video into a written transcript.
+It supports multiple languages and can automatically detect the language spoken in the recording.
+It is well-suited for calls, interviews, lectures, and any other recordings where you need an accurate text version of what was said.
 
-Функция распознавания речи (Speech-to-Text, STT)
+### [Diarize — speaker diarization](https://docs.speech.palatine.ru/api-reference/diarization/diarization-polling-api/diarize)
 
+Speaker diarization separates a recording into speaker segments and identifies who is speaking in each segment. This is useful for meetings and interviews, where keeping the conversation structure by speaker matters.
 
-###  [Diarize — диаризация речи](https://docs.speech.palatine.ru/api-reference/diarization/diarization-polling-api/diarize)
+### [Sentiment Analysis — sentiment analysis](https://docs.speech.palatine.ru/documentation/quick_start/sentiment_analyze#sozdanie-zadachi)
 
-Разметка аудио по спикерам и таймкодам
+Determines the emotional tone of speech in audio/video (and can also analyze text). The result is a ranked list of sentiment classes with probabilities, where the first item is the most likely: `Very Negative`, `Negative`, `Neutral`, `Positive`, `Very Positive`.
 
-###  [Sentiment Analysis — анализ тональности](https://docs.speech.palatine.ru/documentation/quick_start/sentiment_analyze#sozdanie-zadachi)
+### [Summarize — audio summarization](https://docs.speech.palatine.ru/documentation/quick_start/summarization)
 
-Определяет эмоциональную окраску текста в аудио
+Generates a structured summary from audio/video (or from already available text). In addition to built-in scenarios such as `meeting_summary`, it supports `user_prompt` — you can provide a custom prompt for the LLM to produce output in the structure you need (bullet points, decisions and action items, risks, Q&A, etc.).
 
-###  [Summarize — пересказ аудио](https://docs.speech.palatine.ru/documentation/quick_start/summarization)
+## Installation
 
-Нода предоставляет **саммери аудиофайлов** в различных форматах
+1. In your n8n instance, go to **Settings → Community Nodes → Install new**
+2. Enter: `n8n-nodes-palatine-speech`
+3. Click **Install**
+> ⚠️ Make sure the environment variable `N8N_COMMUNITY_NODES_ENABLED=true` is set.
 
-####  Дополнительные параметры Summarize:
+## Credentials
 
-При выборе `Task = Summarize` становятся доступны дополнительные параметры:
+1. Go to **Credentials → + Create**
+2. Find **Palatine Speech API**
+3. Fill in the fields:
+  * **API Key** — available in your Palatine Speech dashboard
+  * **Base URL** — default is `https://api.palatine.ru`
 
-**Thinking**:
+## Workflow Example
 
-Включает расширенный режим рассуждений модели
+1. `Webhook` → Receive an audio file
+2. `Config` → Configure parameters
+3. `Palatine Speech` → Transcribe the file
+4. `Create record` → Create a table record
+5. `Telegram` → Send the result to a chat
 
-**AI Task**:
+![workflow example](https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/example_workflow.png)
 
-Определяет тип Summarize:
+## Use Cases
 
-* `meeting_summary` - Автоматический пересказ совещания, интервью или звонка
-* `user_prompt` - Пользователь сам задаёт инструкцию для пересказа или для получения необходимой информации из аудиофайла
+* **Meeting summaries** \
+For meeting and interview recordings, it is recommended to use `Summarize` (`meeting_summary`): it produces a brief summary, a list of decisions, and action items; the result can be sent to the team chat if required. \
+For non-standard requests, specify `Prompt` in `Summarize` and provide the required instruction, for example: “Additionally, structure the agreements by deadlines and owners.”
 
-## Выбор модели
+* **Lecture/webinar notes** \
+Session recording → `Transcribe` → generate a verbatim transcript. \
+Save the resulting text alongside the session materials.
 
-В поле `model` есть возможность выбрать две модели, через которые будут выполняться задачи:\
-  `palatine_small` — быстрая\
-  `palatine_large_highspeed` — высокоточная
+* **Automatic subtitles for video** \
+Extract the audio track → `Transcribe` + `Diarize` → convert the result to SRT/VTT and attach it to the video. \
+`Transcribe` produces the transcript, while `Diarize` provides speaker segmentation for multi-speaker recordings.
 
+* **Customer support assistant** \
+Processing voice messages with `Sentiment Analysis` helps determine the emotional tone of the request. \
+Based on the result, tickets can be created in the CRM and a priority can be assigned.
 
-##  Особенности
+## Compatibility
 
-Для задач `Diarize`, `Sentiment`, `Summarize` осуществляется двухэтапная работа ноды.
+This node was tested with n8n v1.39.1 and later.
 
-Алгоритм работы:
+## Useful Resources
 
-1. Нода отправляет задачу в Palatine Speech API
-2. Получает `task_id`
-3. Выполняет **polling статуса** (каждые 0.5 секунды)
-4. Возвращает финальный результат после завершения обработки
+* [Palatine Speech documentation](https://docs.speech.palatine.ru/documentation/quick_start/transcription)
+* [n8n Community Nodes guide](https://docs.n8n.io/integrations/community-nodes/)
+* [Official n8n GitHub](https://github.com/n8n-io/n8n)
 
-## Установка
+## Keywords
 
-1. В вашем экземпляре n8n перейдите в **Settings → Community Nodes → Install new**
-2. Введите: `n8n-nodes-palatine-speech`
-3. Нажмите **Install**
-> ⚠️ Убедитесь, что переменная окружения `N8N_COMMUNITY_NODES_ENABLED=true` установлена.
-
-
-
-## Учётные данные (Credentials)
-
-1. Перейдите в **Credentials → + Create**
-2. Найдите **Palatine Speech API**
-3. Заполните поля:
-  * **API Key** — ваш токен из личного кабинета Palatine
-  * **Base URL** — по умолчанию `https://api.palatine.ru` 
->  API-ключ можно найти в https://speech.palatine.ru/dashboard.
-
-
-## Пример воркфлоу
-
-1. `Webhook` → Получаем аудио файл
-2. `Config` → Здесь основные параметры
-3. `Palatine Speech` → Транскрибируем файл
-4. `Create record` → Создаем запись в таблице
-5. `Telegram` → Отправляем результат в чат
-
-![workflow example](https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/ExampleWorkflow.png)
-
-## Варианты использования
-
-**Итоги по встречам** \
-Для записей встреч/интервью используйте `Summarize` `(meeting_summary)` → получайте краткое резюме, решения и задачи → отправляйте в чат команды. \
-Для нестандартных запросов добавьте в `Summarize` `Prompt` и задавайте инструкцию, например: “Дополнительно структурируй договорённости по срокам и ответственных”.
-
-**Конспекты лекций/вебинаров** \
-Запись занятия → `Transcribe` → формируйте дословный конспект и сохраняйте в папку с занятием.
-
-**Авто-субтитры для видео**\
-Забирайте аудиодорожку → `Transcribe` + `Diarize` → конвертируйте результат в SRT/VTT и прикрепляйте к видео.
-
-**Помощник тех поддержки** \
-Отправляйте голосовые сообщения → `Sentiment Analysis` → создавайте тикеты в CRM и проставляйте приоритет в зависимости от настроя сообщения пользователя.
-
-## Совместимость
-
-Эта нода была протестирована на версиях n8n ≥ 1.39.1
-
-## Полезные ресурсы
-
-* [Документация Palatine Speech](https://docs.speech.palatine.ru/documentation/quick_start/transcription)
-* [Руководство по Community Nodes в n8n](https://docs.n8n.io/integrations/community-nodes/)
-* [Официальный GitHub n8n](https://github.com/n8n-io/n8n)
-
-## Ключевые слова
-
-`n8n-community-node-package`, `n8n`, `palatine`, `speech-to-text`, `transcribation`, `stt`, `audio`, `ai`, `automation`, `voice-to-text`, `speech-recognition`, `audio-transcription`, `audio2text`, `audio-processing`, `diarization`, `speaker-diarization`, `speaker-segmentation`, `summarization`, `audio-summarization`, `sentiment-analysis`, `emotion-detection`, `tone-analysis`
-
+`n8n-community-node-package`, `n8n`, `palatine`, `speech-to-text`, `transcribe`, `transcription`, `stt`, `audio`, `ai`, `automation`, `voice-to-text`, `speech-recognition`, `audio-transcription`, `audio2text`, `audio-processing`, `diarization`, `speaker-diarization`, `speaker-segmentation`, `summarization`, `audio-summarization`, `sentiment-analysis`, `emotion-detection`, `tone-analysis`
