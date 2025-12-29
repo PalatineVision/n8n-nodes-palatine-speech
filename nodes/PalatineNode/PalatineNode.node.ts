@@ -10,23 +10,23 @@ import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 type Task = 'transcribe' | 'diarize' | 'sentiment' | 'summarize';
 
-export class PalatineNode implements INodeType {
+export class PalatineSpeechNode implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Palatine Speech',
-		name: 'palatineNode',
+		name: 'PalatineSpeechNode',
 		icon: {
-			light: 'file:logo.svg',
-			dark: 'file:logo2.svg',
+			light: 'file:logoLight.svg',
+			dark: 'file:logoDark.svg',
 		},
 		group: ['transform'],
 		version: 1,
-		description: 'Transcribe, diarize, analyze sentiment or summarize audio using Palatine API',
+		description: 'Palatine API helps transcribe, diarize, analyze sentiment, summarize audio, and more.',
 		defaults: {
 			name: 'Palatine Speech',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [{ name: 'palatineNodeApi', required: true }],
+		credentials: [{ name: 'PalatineSpeechNodeApi', required: true }],
 		properties: [
 			{
 				displayName: 'File',
@@ -54,7 +54,7 @@ export class PalatineNode implements INodeType {
 				type: 'options',
 				options: [
 					{ name: 'palatine_small', value: 'palatine_small', description: 'Work faster' },
-					{ name: 'palatine_large_turbo', value: 'palatine_large_turbo', description: 'More accurate model' },
+					{ name: 'palatine_large_highspeed', value: 'palatine_large_highspeed ', description: 'More accurate model' },
 				],
 				default: 'palatine_small',
 				description: 'Model (applies to all tasks)',
@@ -105,7 +105,7 @@ export class PalatineNode implements INodeType {
 		const pollIntervalMs = 2000;
 		const maxPollAttempts = 150;
 
-		const credentials = await this.getCredentials('palatineNodeApi');
+		const credentials = await this.getCredentials('PalatineSpeechNodeApi');
 		const baseUrl = String(credentials.baseUrl || '').replace(/\/$/, '');
 
 		if (!baseUrl) {
@@ -116,7 +116,7 @@ export class PalatineNode implements INodeType {
 			try {
 				return await this.helpers.httpRequestWithAuthentication.call(
 					this,
-					'palatineNodeApi',
+					'PalatineSpeechNodeApi',
 					options,
 				);
 			} catch (error) {
@@ -236,7 +236,7 @@ export class PalatineNode implements INodeType {
 				const fileName = binaryData.fileName || 'audio';
 				const mimeType = binaryData.mimeType || 'audio/mpeg';
 
-				const u8 = new Uint8Array(audioBuffer); 
+				const u8 = new Uint8Array(audioBuffer); // создаёт копию и гарантирует ArrayBuffer под капотом
                 form.append('file', new Blob([u8], { type: mimeType }), fileName);
 				form.append('model', model);
 
@@ -344,4 +344,3 @@ export class PalatineNode implements INodeType {
 		return [returnData];
 	}
 }
-
