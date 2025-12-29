@@ -236,7 +236,7 @@ export class PalatineNode implements INodeType {
 				const fileName = binaryData.fileName || 'audio';
 				const mimeType = binaryData.mimeType || 'audio/mpeg';
 
-				const u8 = new Uint8Array(audioBuffer); // создаёт копию и гарантирует ArrayBuffer под капотом
+				const u8 = new Uint8Array(audioBuffer); 
                 form.append('file', new Blob([u8], { type: mimeType }), fileName);
 				form.append('model', model);
 
@@ -344,3 +344,4 @@ export class PalatineNode implements INodeType {
 		return [returnData];
 	}
 }
+
