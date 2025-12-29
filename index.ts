@@ -1,4 +1,4 @@
-import { PalatineNode } from './nodes/PalatineNode/PalatineNode.node';
-import { PalatineNodeApi } from './credentials/PalatineNodeApi.credentials';
+import { PalatineSpeechNode } from './nodes/PalatineNode/PalatineSpeechNode.node';
+import { PalatineSpeechNodeApi } from './credentials/PalatineSpeechNodeApi.credentials';
 
-export { PalatineNode, PalatineNodeApi };
+export { PalatineSpeechNode, PalatineSpeechNodeApi };
