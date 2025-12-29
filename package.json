@@ -2,19 +2,17 @@
   "name": "n8n-nodes-palatine",
   "version": "0.1.0",
   "description": "Custom n8n node for Palatine Speech API: transcription, diarization, sentiment analysis, summarization",
-  "keywords": ["n8n", "custom", "node", "palatine", "asr", "speech"],
+  "keywords": ["n8n", "custom", "node", "palatine", "asr", "speech", "n8n-community-node-package"],
   "license": "MIT",
   "author": "Denis",
-
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-
+  "files": ["dist"],
   "scripts": {
     "build": "tsc && npm run copy:assets",
     "copy:assets": "node -e \"const fs=require('fs');const path=require('path');const files=['logo.svg','logo2.svg'];const srcDir=path.join('nodes','PalatineNode');const dstDir=path.join('dist','nodes','PalatineNode');fs.mkdirSync(dstDir,{recursive:true});let ok=true;for(const f of files){const src=path.join(srcDir,f);const dst=path.join(dstDir,f);if(!fs.existsSync(src)){console.error('ERROR:',f,'not found at',src);ok=false;continue;}fs.copyFileSync(src,dst);console.log('OK: copied',src,'->',dst);}if(!ok) process.exit(1);\"",
     "dev": "tsc --watch"
   },
-
   "n8n": {
     "credentials": [
       "dist/credentials/PalatineNodeApi.credentials.js"
@@ -23,17 +21,12 @@
       "dist/nodes/PalatineNode/PalatineNode.node.js"
     ]
   },
-
-  "dependencies": {
-    "form-data": "^4.0.0"
-  },
-
+  "dependencies": {},
   "devDependencies": {
     "n8n-core": "^1.80.0",
     "n8n-workflow": "^1.80.0",
     "typescript": "^5.5.0"
   },
-
   "engines": {
     "node": ">=18.0.0"
   }
