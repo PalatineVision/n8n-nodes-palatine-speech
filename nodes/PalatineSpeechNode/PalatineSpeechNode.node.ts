@@ -20,7 +20,7 @@ export class PalatineSpeechNode implements INodeType {
 		},
 		group: ['transform'],
 		version: 1,
-		description: 'Palatine API helps transcribe, diarize, analyze sentiment, summarize audio, and more.',
+		description: 'Use Palatine Speech API to transcribe audio, diarize speakers, analyze sentiment, generate AI summaries and more.',
 		defaults: {
 			name: 'Palatine Speech',
 		},
@@ -33,31 +33,31 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'binaryProperty',
 				type: 'string',
 				default: 'data',
-				description: 'Input audio file for operations',
+				description: 'Name of the binary property that contains the audio file',
 			},
 			{
 				displayName: 'Task',
 				name: 'task',
 				type: 'options',
 				options: [
-					{ name: 'Transcribe', value: 'transcribe', description: 'Speech to text' },
-					{ name: 'Diarize', value: 'diarize', description: 'Audio tagging by speakers and timecodes' },
-					{ name: 'Sentiment Analysis', value: 'sentiment', description: 'Determines emotional tone in audio' },
-					{ name: 'Summarize', value: 'summarize', description: 'Provides summarization of audio files in various formats' },
+					{ name: 'Transcribe', value: 'transcribe', description: 'Convert speech in the audio file to text.' },
+					{ name: 'Diarize', value: 'diarize', description: 'Split audio by speakers and return timestamps for each segment.' },
+					{ name: 'Sentiment Analysis', value: 'sentiment', description: 'Detect sentiment/emotion in the audio and return scores.' },
+					{ name: 'Summarize', value: 'summarize', description: 'Generate an AI summary of the audio (notes, decisions, action items).' },
 				],
 				default: 'transcribe',
-				description: 'Choose task',
+				description: 'Select what to do with the audio file.',
 			},
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				options: [
-					{ name: 'palatine_small', value: 'palatine_small', description: 'Work faster' },
-					{ name: 'palatine_large_highspeed', value: 'palatine_large_highspeed ', description: 'More accurate model' },
+					{ name: 'palatine_small', value: 'palatine_small', description: 'Faster processing (recommended for most cases).' },
+					{ name: 'palatine_large_highspeed', value: 'palatine_large_highspeed', description: 'Higher accuracy (may take a little longer).' },
 				],
 				default: 'palatine_small',
-				description: 'Model (applies to all tasks)',
+				description: 'Model used for processing (applies to all tasks).',
 			},
 
 			// Summarize-only
@@ -66,11 +66,11 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'summarizeTask',
 				type: 'options',
 				options: [
-					{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Automatic meeting/interview/call summary' },
-					{ name: 'User Prompt', value: 'user_prompt', description: 'Custom prompt for the LLM' },
+					{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Ready-made meeting summary: key points, decisions, and action items.' },
+					{ name: 'User Prompt', value: 'user_prompt', description: 'Use your own prompt to control the summary format/content.' },
 				],
 				default: 'user_prompt',
-				description: 'Summarization task',
+				description: 'Summarization mode.',
 				displayOptions: { show: { task: ['summarize'] } },
 			},
 			{
@@ -78,7 +78,7 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'summarizePrompt',
 				type: 'string',
 				default: '',
-				description: 'For example, "Structure conversation by topic". If empty, it will be transcription.',
+				description: 'Your instruction for the AI. Used only with "User Prompt". Leave blank to use the default prompt.',
 				displayOptions: {
 					show: {
 						task: ['summarize'],
@@ -91,7 +91,7 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'summarizeThinking',
 				type: 'boolean',
 				default: false,
-				description: 'Enables advanced model reasoning mode',
+				description: 'Enable "thinking" mode for deeper reasoning (may increase processing time).',
 				displayOptions: { show: { task: ['summarize'] } },
 			},
 		],
