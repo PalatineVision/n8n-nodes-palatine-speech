@@ -17,7 +17,7 @@ This is an n8n community node that integrates [Palatine Speech](https://speech.p
 [Useful Resources](#useful-resources)\
 [Keywords](#keywords)
 
-[Russian version of README](https://gist.github.com/haxbxbdbhshs/b7dfc63659d0417b3d73d0b1d0a3002f)
+> Looking for a Russian version? [Here](https://gist.github.com/haxbxbdbhshs/b7dfc63659d0417b3d73d0b1d0a3002f)
 
 ## Supported Operations
 
@@ -73,7 +73,7 @@ Generates a structured summary from audio/video (or from already available text)
 
 * **Meeting summaries** \
 For meeting and interview recordings, it is recommended to use `Summarize` (`meeting_summary`): it produces a brief summary, a list of decisions, and group action items by owner and due date; the result can be sent to the team chat if needed. \
-For non-standard requests, specify `Prompt` in `Summarize` and provide the required instruction, for example: “Additionally, structure the agreements by deadlines and owners.”
+For non-standard requests, specify `Prompt` in `Summarize` and provide the required instruction, for example: "Additionally, structure the agreements by deadlines and owners."
 
 * **Lecture/webinar notes** \
 Session recording → `Transcribe` → generate a full transcript. \
