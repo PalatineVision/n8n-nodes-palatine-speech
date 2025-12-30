@@ -38,11 +38,11 @@ It is well-suited for calls, interviews, lectures, and any other recordings wher
 
 Speaker diarization separates a recording into speaker segments and identifies who is speaking in each segment. This is useful for meetings and interviews, where keeping the conversation structure by speaker matters.
 
-### [Sentiment Analysis — sentiment analysis](https://docs.speech.palatine.ru/api-reference/transcribe/transcribe-polling-api/transcribe)
+### [Sentiment Analysis — sentiment analysis](https://docs.speech.palatine.ru/api-reference/sentiment-analysis/sentiment-analysis-polling-api/sentiment-analysis)
 
 Determines the emotional tone of speech in audio/video (and can also analyze text). The result is a ranked list of sentiment classes with probabilities, where the first item is the most likely: `Very Negative`, `Negative`, `Neutral`, `Positive`, `Very Positive`.
 
-### [Summarize — audio summarization](https://docs.speech.palatine.ru/api-reference/transcribe/transcribe-polling-api/transcribe)
+### [Summarize — audio summarization]([https://docs.speech.palatine.ru/api-reference/transcribe/transcribe-polling-api/transcribe](https://docs.speech.palatine.ru/api-reference/ai-service/ai-service/summarize-file))
 
 Generates a structured summary from audio/video (or from already available text). In addition to built-in scenarios such as `meeting_summary`, it supports `user_prompt` — you can provide a custom prompt for the LLM to produce output in the structure you need (bullet points, decisions and action items, risks, Q&A, etc.).
 
