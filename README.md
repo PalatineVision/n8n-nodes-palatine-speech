@@ -23,12 +23,12 @@ This is an n8n community node that integrates [Palatine Speech](https://speech.p
 
 ## Supported Operations
 
-For details on each operation, see the [Palatine Speech documentation](https://docs.speech.palatine.ru/documentation/quick_start/transcription). You can also open the documentation by clicking the operation title below.
+For details on each operation, see the Palatine Speech [documentation](https://docs.speech.palatine.ru/documentation/quick_start/transcription). You can also open the documentation by clicking the operation title below.
 
 * [Full list of supported file types](https://docs.speech.palatine.ru/documentation/technical_information/supported_files)
 * [Full list of supported languages](https://docs.speech.palatine.ru/documentation/technical_information/supported_languages)
 
-### [Transcribe — speech transcription](https://docs.speech.palatine.ru/documentation/quick_start/transcription)
+### [Transcribe — speech transcription](https://docs.speech.palatine.ru/api-reference/transcribe/transcribe-polling-api/transcribe)
 
 Speech-to-Text (STT) converts audio/video into a written transcript.
 It supports multiple languages and can automatically detect the language spoken in the recording.
@@ -38,11 +38,11 @@ It is well-suited for calls, interviews, lectures, and any other recordings wher
 
 Speaker diarization separates a recording into speaker segments and identifies who is speaking in each segment. This is useful for meetings and interviews, where keeping the conversation structure by speaker matters.
 
-### [Sentiment Analysis — sentiment analysis](https://docs.speech.palatine.ru/documentation/quick_start/sentiment_analyze#sozdanie-zadachi)
+### [Sentiment Analysis — sentiment analysis](https://docs.speech.palatine.ru/api-reference/transcribe/transcribe-polling-api/transcribe)
 
 Determines the emotional tone of speech in audio/video (and can also analyze text). The result is a ranked list of sentiment classes with probabilities, where the first item is the most likely: `Very Negative`, `Negative`, `Neutral`, `Positive`, `Very Positive`.
 
-### [Summarize — audio summarization](https://docs.speech.palatine.ru/documentation/quick_start/summarization)
+### [Summarize — audio summarization](https://docs.speech.palatine.ru/api-reference/transcribe/transcribe-polling-api/transcribe)
 
 Generates a structured summary from audio/video (or from already available text). In addition to built-in scenarios such as `meeting_summary`, it supports `user_prompt` — you can provide a custom prompt for the LLM to produce output in the structure you need (bullet points, decisions and action items, risks, Q&A, etc.).
 
