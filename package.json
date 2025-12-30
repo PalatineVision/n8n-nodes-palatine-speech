@@ -18,7 +18,14 @@
   "audio-transcription",
   "audio2text",
   "audio-processing",
-  "diarization"
+  "diarization",
+  "speaker-diarization",
+  "speaker-segmentation", 
+  "summarization", 
+  "audio-summarization",
+  "sentiment-analysis",
+  "emotion-detection",
+  "tone-analysis"
   ],
   "license": "MIT",
   "author": "palatine-vision",
