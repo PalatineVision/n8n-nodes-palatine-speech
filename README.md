@@ -2,7 +2,7 @@
 
 # n8n-nodes-palatine-speech
 
-> Designed for seamless integration of the **Palatine Speech API** into n8n workflows.
+> Designed for seamless integration of **Palatine Speech API** into n8n workflows.
 
 This is an n8n community node that integrates [Palatine Speech](https://speech.palatine.ru/) into your workflows and enables audio processing tasks such as transcription, diarization, sentiment analysis, and summarization.
 
