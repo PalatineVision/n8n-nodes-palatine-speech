@@ -46,10 +46,10 @@ Generates a structured summary from audio/video (or from already available text)
 
 ## Installation
 
-1. In your n8n instance, go to **Settings → Community Nodes → Install new**
+1. In your n8n instance, go to **Settings > Community Nodes → Install**
 2. Enter: `n8n-nodes-palatine-speech`
 3. Click **Install**
-> ⚠️ Make sure the environment variable `N8N_COMMUNITY_NODES_ENABLED=true` is set.
+> ⚠️ Make sure the environment variable `N8N_COMMUNITY_PACKAGES_ENABLED=true` is set.
 
 ## Credentials
 
@@ -72,11 +72,11 @@ Generates a structured summary from audio/video (or from already available text)
 ## Use Cases
 
 * **Meeting summaries** \
-For meeting and interview recordings, it is recommended to use `Summarize` (`meeting_summary`): it produces a brief summary, a list of decisions, and action items; the result can be sent to the team chat if required. \
+For meeting and interview recordings, it is recommended to use `Summarize` (`meeting_summary`): it produces a brief summary, a list of decisions, and group action items by owner and due date; the result can be sent to the team chat if needed. \
 For non-standard requests, specify `Prompt` in `Summarize` and provide the required instruction, for example: “Additionally, structure the agreements by deadlines and owners.”
 
 * **Lecture/webinar notes** \
-Session recording → `Transcribe` → generate a verbatim transcript. \
+Session recording → `Transcribe` → generate a full transcript. \
 Save the resulting text alongside the session materials.
 
 * **Automatic subtitles for video** \
@@ -100,3 +100,9 @@ This node was tested with n8n v1.39.1 and later.
 ## Keywords
 
 `n8n-community-node-package`, `n8n`, `palatine`, `speech-to-text`, `transcribe`, `transcription`, `stt`, `audio`, `ai`, `automation`, `voice-to-text`, `speech-recognition`, `audio-transcription`, `audio2text`, `audio-processing`, `diarization`, `speaker-diarization`, `speaker-segmentation`, `summarization`, `audio-summarization`, `sentiment-analysis`, `emotion-detection`, `tone-analysis`
+
+## License
+MIT
+
+## Support
+Telegram @Speech_Palatine_Support_Bot
