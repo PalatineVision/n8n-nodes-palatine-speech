@@ -102,8 +102,8 @@ export class PalatineSpeechNode implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		// Polling
-		const pollIntervalMs = 500;
-		const maxPollAttempts = 150;
+		const pollIntervalMs = 1000;
+		const maxPollAttempts = 300;
 
 		const credentials = await this.getCredentials('PalatineSpeechNodeApi');
 		const baseUrl = String(credentials.baseUrl || '').replace(/\/$/, '');
@@ -344,4 +344,5 @@ export class PalatineSpeechNode implements INodeType {
 		return [returnData];
 	}
 }
+
 
