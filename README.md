@@ -105,4 +105,4 @@ This node was tested with n8n v1.39.1 and later.
 MIT
 
 ## Support
-Telegram @Speech_Palatine_Support_Bot
+Telegram `@Speech_Palatine_Support_Bot`
