@@ -20,7 +20,7 @@ export class PalatineSpeechNode implements INodeType {
 		},
 		group: ['transform'],
 		version: 1,
-		description: 'Use Palatine Speech API to transcribe audio, diarize speakers, analyze sentiment, generate AI summaries and more.',
+		description: 'Use Palatine Speech API to transcribe audio, diarize speakers, analyze sentiment, generate AI summaries and more',
 		defaults: {
 			name: 'Palatine Speech',
 		},
@@ -40,24 +40,24 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'task',
 				type: 'options',
 				options: [
-					{ name: 'Transcribe', value: 'transcribe', description: 'Convert speech in the audio file to text.' },
-					{ name: 'Diarize', value: 'diarize', description: 'Split audio by speakers and return timestamps for each segment.' },
-					{ name: 'Sentiment Analysis', value: 'sentiment', description: 'Detect sentiment/emotion in the audio and return scores.' },
-					{ name: 'Summarize', value: 'summarize', description: 'Generate an AI summary of the audio (notes, decisions, action items).' },
+					{ name: 'Transcribe', value: 'transcribe', description: 'Convert speech in the audio file to text' },
+					{ name: 'Diarize', value: 'diarize', description: 'Split audio by speakers and return timestamps for each segment' },
+					{ name: 'Sentiment Analysis', value: 'sentiment', description: 'Detect sentiment/emotion in the audio and return scores' },
+					{ name: 'Summarize', value: 'summarize', description: 'Generate an AI summary of the audio (notes, decisions, action items)' },
 				],
 				default: 'transcribe',
-				description: 'Select what to do with the audio file.',
+				description: 'Select what to do with the audio file',
 			},
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				options: [
-					{ name: 'palatine_small', value: 'palatine_small', description: 'Faster processing (recommended for most cases).' },
-					{ name: 'palatine_large_highspeed', value: 'palatine_large_highspeed', description: 'Higher accuracy (may take a little longer).' },
+					{ name: 'palatine_small', value: 'palatine_small', description: 'Faster processing (recommended for most cases)' },
+					{ name: 'palatine_large_highspeed', value: 'palatine_large_highspeed', description: 'Higher accuracy (may take a little longer)' },
 				],
 				default: 'palatine_small',
-				description: 'Model used for processing (applies to all tasks).',
+				description: 'Model used for processing (applies to all tasks)',
 			},
 
 			// Summarize-only
@@ -66,11 +66,11 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'summarizeTask',
 				type: 'options',
 				options: [
-					{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Ready-made meeting summary: key points, decisions, and action items.' },
-					{ name: 'User Prompt', value: 'user_prompt', description: 'Use your own prompt to control the summary format/content.' },
+					{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Ready-made meeting summary: key points, decisions, and action items' },
+					{ name: 'User Prompt', value: 'user_prompt', description: 'Use your own prompt to control the summary format/content' },
 				],
 				default: 'user_prompt',
-				description: 'Summarization mode.',
+				description: 'Summarization mode',
 				displayOptions: { show: { task: ['summarize'] } },
 			},
 			{
@@ -78,7 +78,7 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'summarizePrompt',
 				type: 'string',
 				default: '',
-				description: 'Your instruction for the AI. Used only with "User Prompt". Leave blank to use the default prompt.',
+				description: 'Your instruction for the AI. Used only with "User Prompt". Leave blank to use the default prompt',
 				displayOptions: {
 					show: {
 						task: ['summarize'],
@@ -91,7 +91,7 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'summarizeThinking',
 				type: 'boolean',
 				default: false,
-				description: 'Enable "thinking" mode for deeper reasoning (may increase processing time).',
+				description: 'Enable "thinking" mode for deeper reasoning (may increase processing time)',
 				displayOptions: { show: { task: ['summarize'] } },
 			},
 		],
@@ -102,7 +102,7 @@ export class PalatineSpeechNode implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		// Polling
-		const pollIntervalMs = 2000;
+		const pollIntervalMs = 500;
 		const maxPollAttempts = 150;
 
 		const credentials = await this.getCredentials('PalatineSpeechNodeApi');
@@ -236,7 +236,7 @@ export class PalatineSpeechNode implements INodeType {
 				const fileName = binaryData.fileName || 'audio';
 				const mimeType = binaryData.mimeType || 'audio/mpeg';
 
-				const u8 = new Uint8Array(audioBuffer); // создаёт копию и гарантирует ArrayBuffer под капотом
+				const u8 = new Uint8Array(audioBuffer);
                 form.append('file', new Blob([u8], { type: mimeType }), fileName);
 				form.append('model', model);
 
@@ -344,3 +344,4 @@ export class PalatineSpeechNode implements INodeType {
 		return [returnData];
 	}
 }
+
