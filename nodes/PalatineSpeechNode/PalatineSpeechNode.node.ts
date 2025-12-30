@@ -33,31 +33,59 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'binaryProperty',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary property that contains the audio file',
+				description: 'Name of binary property that contains audio file',
 			},
 			{
 				displayName: 'Task',
 				name: 'task',
 				type: 'options',
 				options: [
-					{ name: 'Transcribe', value: 'transcribe', description: 'Convert speech in the audio file to text' },
+					{ name: 'Transcribe', value: 'transcribe', description: 'Convert speech in audio file to text' },
 					{ name: 'Diarize', value: 'diarize', description: 'Split audio by speakers and return timestamps for each segment' },
-					{ name: 'Sentiment Analysis', value: 'sentiment', description: 'Detect sentiment/emotion in the audio and return scores' },
-					{ name: 'Summarize', value: 'summarize', description: 'Generate an AI summary of the audio (notes, decisions, action items)' },
+					{ name: 'Sentiment Analysis', value: 'sentiment', description: 'Detect sentiment/emotion in audio and return scores' },
+					{ name: 'Summarize', value: 'summarize', description: 'Generate an AI summary of audio (notes, decisions, action items)' },
 				],
 				default: 'transcribe',
-				description: 'Select what to do with the audio file',
+				description: 'Select what to do with audio file',
 			},
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				options: [
-					{ name: 'palatine_small', value: 'palatine_small', description: 'Faster processing (recommended for most cases)' },
-					{ name: 'palatine_large_highspeed', value: 'palatine_large_highspeed', description: 'Higher accuracy (may take a little longer)' },
+					{ name: 'palatine_small', value: 'palatine_small', description: 'Model used for transcription processing' },
+					{ name: 'palatine_large_highspeed', value: 'palatine_large_highspeed', description: 'Model used for transcription processing' },
 				],
+				displayOptions: {
+					show: {
+						task: ['transcribe'],
+					},
+				},
 				default: 'palatine_small',
-				description: 'Model used for processing (applies to all tasks)',
+				description: 'Model used for transcription processing',
+			},
+
+			{
+				displayName: 'Polling Interval',
+				name: 'pollIntervalMs',
+				type: 'number',
+				typeOptions: {
+					minValue: 500,
+					maxValue: 900000,
+				},
+				default: 1000,
+				description: 'How often node polls API to retrieve result. Minimum 500 ms, maximum 900000 ms',
+			},
+			{
+				displayName: 'Max Poll Attempts',
+				name: 'maxPollAttempts',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 300,
+				description: 'How many times node polls API before giving up. Minimum 1 attempt, maximum 1000 attempts',
 			},
 
 			// Summarize-only
@@ -67,7 +95,7 @@ export class PalatineSpeechNode implements INodeType {
 				type: 'options',
 				options: [
 					{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Ready-made meeting summary: key points, decisions, and action items' },
-					{ name: 'User Prompt', value: 'user_prompt', description: 'Use your own prompt to control the summary format/content' },
+					{ name: 'User Prompt', value: 'user_prompt', description: 'Use your own prompt to control summary format/content' },
 				],
 				default: 'meeting_summary',
 				description: 'Summarization mode',
@@ -78,7 +106,7 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'summarizePrompt',
 				type: 'string',
 				default: '',
-				description: 'Your instruction for the AI. Used only with "User Prompt". Leave blank to use the default prompt',
+				description: 'Your instruction for AI. Used only with "User Prompt". Leave blank to use default prompt',
 				displayOptions: {
 					show: {
 						task: ['summarize'],
@@ -102,8 +130,8 @@ export class PalatineSpeechNode implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		// Polling
-		const pollIntervalMs = 1000;
-		const maxPollAttempts = 300;
+		const defaultPollIntervalMs = 1000;
+		const defaultMaxPollAttempts = 300;
 
 		const credentials = await this.getCredentials('PalatineSpeechNodeApi');
 		const baseUrl = String(credentials.baseUrl || '').replace(/\/$/, '');
@@ -170,7 +198,10 @@ export class PalatineSpeechNode implements INodeType {
 			try {
 				const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 				const task = this.getNodeParameter('task', i) as Task;
-				const model = this.getNodeParameter('model', i) as string;
+				let model: string | undefined;
+				if (task === 'transcribe') {
+					model = this.getNodeParameter('model', i) as string;
+				}
 
 				const binaryData = items[i].binary?.[binaryProperty];
 				if (!binaryData) {
@@ -183,13 +214,23 @@ export class PalatineSpeechNode implements INodeType {
 				let summarizeThinking = false;
 				let summarizePromptRaw = '';
 
+				let pollIntervalMs = defaultPollIntervalMs;
+
+				let maxPollAttempts = defaultMaxPollAttempts;
+
 				if (task === 'summarize') {
 					summarizeTask = this.getNodeParameter('summarizeTask', i) as string;
 					summarizeThinking = this.getNodeParameter('summarizeThinking', i) as boolean;
 					if (summarizeTask === 'user_prompt') {
 						summarizePromptRaw = (this.getNodeParameter('summarizePrompt', i, '') as string) || '';
 					}
+
 				}
+
+				pollIntervalMs = this.getNodeParameter('pollIntervalMs', i, defaultPollIntervalMs) as number;
+				pollIntervalMs = Math.min(900000, Math.max(500, pollIntervalMs));
+				maxPollAttempts = this.getNodeParameter('maxPollAttempts', i, defaultMaxPollAttempts) as number;
+				maxPollAttempts = Math.min(1000, Math.max(1, maxPollAttempts));
 
 				const audioBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
@@ -238,7 +279,9 @@ export class PalatineSpeechNode implements INodeType {
 
 				const u8 = new Uint8Array(audioBuffer);
                 form.append('file', new Blob([u8], { type: mimeType }), fileName);
-				form.append('model', model);
+				if (model) {
+					form.append('model', model);
+				}
 
 				const createOptions: IHttpRequestOptions = {
 					method: 'POST',
@@ -302,8 +345,11 @@ export class PalatineSpeechNode implements INodeType {
 				const result: Record<string, any> = {
 					task,
 					source_file: binaryData.fileName,
-					model_used: model,
 				};
+
+				if (task === 'transcribe' && model) {
+					result.model_used = model;
+				}
 
 				if (task === 'transcribe') {
 					result.transcription =
