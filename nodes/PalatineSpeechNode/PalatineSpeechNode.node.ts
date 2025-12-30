@@ -69,7 +69,7 @@ export class PalatineSpeechNode implements INodeType {
 					{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Ready-made meeting summary: key points, decisions, and action items' },
 					{ name: 'User Prompt', value: 'user_prompt', description: 'Use your own prompt to control the summary format/content' },
 				],
-				default: 'user_prompt',
+				default: 'meeting_summary',
 				description: 'Summarization mode',
 				displayOptions: { show: { task: ['summarize'] } },
 			},
@@ -344,5 +344,6 @@ export class PalatineSpeechNode implements INodeType {
 		return [returnData];
 	}
 }
+
 
 
