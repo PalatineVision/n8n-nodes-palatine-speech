@@ -17,7 +17,7 @@ This is an n8n community node that integrates [Palatine Speech](https://speech.p
 [Useful Resources](#useful-resources)\
 [Keywords](#keywords)
 
-[Russian version of README](https://github.com/haxbxbdbhshs/ReadMe-On-Ru-Lang-For-Palatine-Node/tree/main)
+[Russian version of README](https://gist.github.com/haxbxbdbhshs/b7dfc63659d0417b3d73d0b1d0a3002f)
 
 ## Supported Operations
 
