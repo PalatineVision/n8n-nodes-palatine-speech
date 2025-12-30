@@ -15,7 +15,9 @@ This is an n8n community node that integrates [Palatine Speech](https://speech.p
 [Use Cases](#use-cases) \
 [Compatibility](#compatibility)\
 [Useful Resources](#useful-resources)\
-[Keywords](#keywords)
+[Keywords](#keywords) \
+[License](#license) \
+[Support](#support)
 
 > Looking for a Russian version? [Here](https://gist.github.com/haxbxbdbhshs/b7dfc63659d0417b3d73d0b1d0a3002f)
 
@@ -105,4 +107,4 @@ This node was tested with n8n v1.39.1 and later.
 MIT
 
 ## Support
-Telegram `@Speech_Palatine_Support_Bot`
+Need help? Contact our Telegram support bot: [@Speech_Palatine_Support_Bot](https://t.me/Speech_Palatine_Support_Bot)
