@@ -10,6 +10,14 @@ import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 type Task = 'transcribe' | 'diarize' | 'sentiment' | 'summarize';
 
+// Polling defaults (by task)
+const TASK_POLL_DEFAULTS: Record<Task, { pollIntervalMs: number; maxPollAttempts: number }> = {
+	transcribe: { pollIntervalMs: 500, maxPollAttempts: 200 },
+	diarize: { pollIntervalMs: 500, maxPollAttempts: 200 },
+	sentiment: { pollIntervalMs: 500, maxPollAttempts: 200 },
+	summarize: { pollIntervalMs: 20000, maxPollAttempts: 500 },
+};
+
 export class PalatineSpeechNode implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Palatine Speech',
@@ -20,7 +28,8 @@ export class PalatineSpeechNode implements INodeType {
 		},
 		group: ['transform'],
 		version: 1,
-		description: 'Use Palatine Speech API to transcribe audio, diarize speakers, analyze sentiment, generate AI summaries and more',
+		description:
+			'Use Palatine Speech API to transcribe audio, diarize speakers, analyze sentiment, generate AI summaries and more',
 		defaults: {
 			name: 'Palatine Speech',
 		},
@@ -41,9 +50,21 @@ export class PalatineSpeechNode implements INodeType {
 				type: 'options',
 				options: [
 					{ name: 'Transcribe', value: 'transcribe', description: 'Convert speech in audio file to text' },
-					{ name: 'Diarize', value: 'diarize', description: 'Split audio by speakers and return timestamps for each segment' },
-					{ name: 'Sentiment Analysis', value: 'sentiment', description: 'Detect sentiment/emotion in audio and return scores' },
-					{ name: 'Summarize', value: 'summarize', description: 'Generate an AI summary of audio (notes, decisions, action items)' },
+					{
+						name: 'Diarize',
+						value: 'diarize',
+						description: 'Split audio by speakers and return timestamps for each segment',
+					},
+					{
+						name: 'Sentiment Analysis',
+						value: 'sentiment',
+						description: 'Detect sentiment/emotion in audio and return scores',
+					},
+					{
+						name: 'Summarize',
+						value: 'summarize',
+						description: 'Generate an AI summary of audio (notes, decisions, action items)',
+					},
 				],
 				default: 'transcribe',
 				description: 'Select what to do with audio file',
@@ -54,7 +75,11 @@ export class PalatineSpeechNode implements INodeType {
 				type: 'options',
 				options: [
 					{ name: 'palatine_small', value: 'palatine_small', description: 'Model used for transcription processing' },
-					{ name: 'palatine_large_highspeed', value: 'palatine_large_highspeed', description: 'Model used for transcription processing' },
+					{
+						name: 'palatine_large_highspeed',
+						value: 'palatine_large_highspeed',
+						description: 'Model used for transcription processing',
+					},
 				],
 				displayOptions: {
 					show: {
@@ -73,8 +98,9 @@ export class PalatineSpeechNode implements INodeType {
 					minValue: 500,
 					maxValue: 900000,
 				},
-				default: 1000,
-				description: 'How often node polls API to retrieve result. Minimum 500 ms, maximum 900000 ms',
+				default: 500,
+				description:
+					'How often node polls API to retrieve result. Minimum 500 ms, maximum 900000 ms. (Summarize: if left unchanged, node uses 20000 ms by default)',
 			},
 			{
 				displayName: 'Max Poll Attempts',
@@ -84,8 +110,9 @@ export class PalatineSpeechNode implements INodeType {
 					minValue: 1,
 					maxValue: 1000,
 				},
-				default: 300,
-				description: 'How many times node polls API before giving up. Minimum 1 attempt, maximum 1000 attempts',
+				default: 200,
+				description:
+					'How many times node polls API before giving up. Minimum 1 attempt, maximum 1000 attempts. (Summarize: if left unchanged, node uses 500 by default)',
 			},
 
 			// Summarize-only
@@ -94,8 +121,16 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'summarizeTask',
 				type: 'options',
 				options: [
-					{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Ready-made meeting summary: key points, decisions, and action items' },
-					{ name: 'User Prompt', value: 'user_prompt', description: 'Use your own prompt to control summary format/content' },
+					{
+						name: 'Meeting Summary',
+						value: 'meeting_summary',
+						description: 'Ready-made meeting summary: key points, decisions, and action items',
+					},
+					{
+						name: 'User Prompt',
+						value: 'user_prompt',
+						description: 'Use your own prompt to control summary format/content',
+					},
 				],
 				default: 'meeting_summary',
 				description: 'Summarization mode',
@@ -129,10 +164,6 @@ export class PalatineSpeechNode implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		// Polling
-		const defaultPollIntervalMs = 1000;
-		const defaultMaxPollAttempts = 300;
-
 		const credentials = await this.getCredentials('PalatineSpeechNodeApi');
 		const baseUrl = String(credentials.baseUrl || '').replace(/\/$/, '');
 
@@ -142,11 +173,7 @@ export class PalatineSpeechNode implements INodeType {
 
 		const request = async (options: IHttpRequestOptions, itemIndex: number) => {
 			try {
-				return await this.helpers.httpRequestWithAuthentication.call(
-					this,
-					'PalatineSpeechNodeApi',
-					options,
-				);
+				return await this.helpers.httpRequestWithAuthentication.call(this, 'PalatineSpeechNodeApi', options);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error as any, { itemIndex });
 			}
@@ -198,6 +225,7 @@ export class PalatineSpeechNode implements INodeType {
 			try {
 				const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 				const task = this.getNodeParameter('task', i) as Task;
+
 				let model: string | undefined;
 				if (task === 'transcribe') {
 					model = this.getNodeParameter('model', i) as string;
@@ -214,22 +242,33 @@ export class PalatineSpeechNode implements INodeType {
 				let summarizeThinking = false;
 				let summarizePromptRaw = '';
 
-				let pollIntervalMs = defaultPollIntervalMs;
-
-				let maxPollAttempts = defaultMaxPollAttempts;
-
 				if (task === 'summarize') {
 					summarizeTask = this.getNodeParameter('summarizeTask', i) as string;
 					summarizeThinking = this.getNodeParameter('summarizeThinking', i) as boolean;
 					if (summarizeTask === 'user_prompt') {
 						summarizePromptRaw = (this.getNodeParameter('summarizePrompt', i, '') as string) || '';
 					}
-
 				}
 
-				pollIntervalMs = this.getNodeParameter('pollIntervalMs', i, defaultPollIntervalMs) as number;
+				// Polling params from UI
+				let pollIntervalMs = this.getNodeParameter('pollIntervalMs', i) as number;
+				let maxPollAttempts = this.getNodeParameter('maxPollAttempts', i) as number;
+
+				// Task-specific defaults (also supports old saved defaults 1000/300)
+				const taskDefaults = TASK_POLL_DEFAULTS[task];
+
+				if (task === 'summarize') {
+					// if user left UI default (500/200) OR old defaults (1000/300) → use summarize defaults
+					if (pollIntervalMs === 500 || pollIntervalMs === 1000) pollIntervalMs = taskDefaults.pollIntervalMs; // 20000
+					if (maxPollAttempts === 200 || maxPollAttempts === 300) maxPollAttempts = taskDefaults.maxPollAttempts; // 500
+				} else {
+					// if old flows have 1000/300 → switch to new non-summarize defaults
+					if (pollIntervalMs === 1000) pollIntervalMs = taskDefaults.pollIntervalMs; // 500
+					if (maxPollAttempts === 300) maxPollAttempts = taskDefaults.maxPollAttempts; // 200
+				}
+
+				// clamp
 				pollIntervalMs = Math.min(900000, Math.max(500, pollIntervalMs));
-				maxPollAttempts = this.getNodeParameter('maxPollAttempts', i, defaultMaxPollAttempts) as number;
 				maxPollAttempts = Math.min(1000, Math.max(1, maxPollAttempts));
 
 				const audioBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -256,9 +295,7 @@ export class PalatineSpeechNode implements INodeType {
 						}
 
 						const promptToSend =
-							summarizeTask === 'meeting_summary'
-								? '*'
-								: (summarizePromptRaw || '').trim() || '*';
+							summarizeTask === 'meeting_summary' ? '*' : (summarizePromptRaw || '').trim() || '*';
 
 						url = `${baseUrl}/api/v1/ai_service/summarize_file`;
 						qs = {
@@ -278,7 +315,8 @@ export class PalatineSpeechNode implements INodeType {
 				const mimeType = binaryData.mimeType || 'audio/mpeg';
 
 				const u8 = new Uint8Array(audioBuffer);
-                form.append('file', new Blob([u8], { type: mimeType }), fileName);
+				form.append('file', new Blob([u8], { type: mimeType }), fileName);
+
 				if (model) {
 					form.append('model', model);
 				}
@@ -381,8 +419,6 @@ export class PalatineSpeechNode implements INodeType {
 					});
 					continue;
 				}
-
-				// If it's already a NodeOperationError/NodeApiError — rethrow
 				throw error;
 			}
 		}
@@ -390,6 +426,3 @@ export class PalatineSpeechNode implements INodeType {
 		return [returnData];
 	}
 }
-
-
-
