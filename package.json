@@ -1,0 +1,60 @@
+{
+  "name": "n8n-nodes-palatine-speech",
+  "version": "1.0.0",
+  "description": "Custom n8n node for Palatine Speech API: transcription, diarization, sentiment analysis, summarization and more",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "palatine",
+    "speech-to-text",
+    "transcribe",
+    "transcription",
+    "stt",
+    "audio",
+    "ai",
+    "automation",
+    "voice-to-text",
+    "speech-recognition",
+    "audio-transcription",
+    "audio2text",
+    "audio-processing",
+    "diarization",
+    "speaker-diarization",
+    "speaker-segmentation",
+    "summarization",
+    "audio-summarization",
+    "sentiment-analysis",
+    "emotion-detection",
+    "tone-analysis"
+  ],
+  "license": "MIT",
+  "author": "palatine-vision",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && npm run copy:assets",
+    "copy:assets": "node -e \"const fs=require('fs');const path=require('path');const files=['logoLight.svg','logoDark.svg'];const srcDir=path.join('nodes','PalatineSpeechNode');const dstDir=path.join('dist','nodes','PalatineSpeechNode');fs.mkdirSync(dstDir,{recursive:true});let ok=true;for(const f of files){const src=path.join(srcDir,f);const dst=path.join(dstDir,f);if(!fs.existsSync(src)){console.error('ERROR:',f,'not found at',src);ok=false;continue;}fs.copyFileSync(src,dst);console.log('OK: copied',src,'->',dst);}if(!ok) process.exit(1);\"",
+    "dev": "tsc --watch",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "n8n": {
+    "credentials": [
+      "dist/credentials/PalatineSpeechNodeApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/PalatineSpeechNode/PalatineSpeechNode.node.js"
+    ]
+  },
+  "devDependencies": {
+    "n8n-core": "^1.80.0",
+    "n8n-workflow": "^1.80.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
