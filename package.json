@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-palatine-speech",
   "version": "1.0.0",
-  "description": "Custom n8n node for Palatine Speech API: transcription, diarization, sentiment analysis, summarization and more",
+  "description": "Official n8n node for Palatine Speech API: transcription, diarization, sentiment analysis, summarization and more",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
@@ -28,7 +28,18 @@
     "tone-analysis"
   ],
   "license": "MIT",
-  "author": "palatine-vision",
+  "author": {
+    "name": "Palatine",
+    "email": "palatine_vision@protonmail.com"
+  },
+  "homepage": "https://speech.palatine.ru",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PalatineVision/n8n-nodes-palatine-speech.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PalatineVision/n8n-nodes-palatine-speech/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
