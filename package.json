@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-palatine-speech",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Official n8n node for Palatine Speech API: transcription, diarization, sentiment analysis, summarization and more",
   "keywords": [
     "n8n-community-node-package",
