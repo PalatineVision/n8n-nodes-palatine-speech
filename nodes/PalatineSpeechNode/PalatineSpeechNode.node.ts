@@ -90,29 +90,39 @@ export class PalatineSpeechNode implements INodeType {
 				description: 'Model used for transcription processing',
 			},
 
+			// ✅ Grouped options
 			{
-				displayName: 'Polling Interval',
-				name: 'pollIntervalMs',
-				type: 'number',
-				typeOptions: {
-					minValue: 500,
-					maxValue: 900000,
-				},
-				default: 500,
-				description:
-					'How often node polls API to retrieve result. Minimum 500 ms, maximum 900000 ms. (Summarize: if left unchanged, node uses 20000 ms by default)',
-			},
-			{
-				displayName: 'Max Poll Attempts',
-				name: 'maxPollAttempts',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-					maxValue: 1000,
-				},
-				default: 200,
-				description:
-					'How many times node polls API before giving up. Minimum 1 attempt, maximum 1000 attempts. (Summarize: if left unchanged, node uses 500 by default)',
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				options: [
+					{
+						displayName: 'Polling Interval(ms)',
+						name: 'pollIntervalMs',
+						type: 'number',
+						typeOptions: {
+							minValue: 500,
+							maxValue: 900000,
+						},
+						default: 500,
+						description:
+							'How often node polls API to retrieve result. Minimum 500 ms, maximum 900000 ms. (Summarize: if left unchanged, node uses 20000 ms by default)',
+					},
+					{
+						displayName: 'Max Poll Attempts',
+						name: 'maxPollAttempts',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+							maxValue: 1000,
+						},
+						default: 200,
+						description:
+							'How many times node polls API before giving up. Minimum 1 attempt, maximum 1000 attempts. (Summarize: if left unchanged, node uses 500 by default)',
+					},
+				],
 			},
 
 			// Summarize-only
@@ -250,9 +260,20 @@ export class PalatineSpeechNode implements INodeType {
 					}
 				}
 
-				// Polling params from UI
-				let pollIntervalMs = this.getNodeParameter('pollIntervalMs', i) as number;
-				let maxPollAttempts = this.getNodeParameter('maxPollAttempts', i) as number;
+				// ✅ Polling params from UI (Options collection) + backward compat with old top-level params
+				const uiOptions = (this.getNodeParameter('options', i, {}) as {
+					pollIntervalMs?: number;
+					maxPollAttempts?: number;
+				}) ?? {};
+
+				// old saved workflows may still have these at top-level in node.parameters
+				const legacyParams = (this.getNode().parameters || {}) as {
+					pollIntervalMs?: number;
+					maxPollAttempts?: number;
+				};
+
+				let pollIntervalMs = (uiOptions.pollIntervalMs ?? legacyParams.pollIntervalMs ?? 500) as number;
+				let maxPollAttempts = (uiOptions.maxPollAttempts ?? legacyParams.maxPollAttempts ?? 200) as number;
 
 				// Task-specific defaults (also supports old saved defaults 1000/300)
 				const taskDefaults = TASK_POLL_DEFAULTS[task];
