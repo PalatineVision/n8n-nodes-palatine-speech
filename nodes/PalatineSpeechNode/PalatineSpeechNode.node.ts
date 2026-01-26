@@ -10,6 +10,7 @@ import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 type Task = 'transcribe' | 'diarize' | 'sentiment' | 'summarize';
 type ResponseFormat = '' | 'srt' | 'vtt';
+type SummarizeInput = 'file' | 'text';
 
 const TASK_POLL_DEFAULTS: Record<Task, { pollIntervalMs: number; maxPollAttempts: number }> = {
 	transcribe: { pollIntervalMs: 500, maxPollAttempts: 200 },
@@ -40,7 +41,7 @@ export class PalatineSpeechNode implements INodeType {
 				name: 'binaryProperty',
 				type: 'string',
 				default: 'data',
-				description: 'Name of binary property that contains audio file',
+				description: 'Name of binary property that contains audio file (used for file-based tasks)',
 			},
 			{
 				displayName: 'Task',
@@ -50,10 +51,10 @@ export class PalatineSpeechNode implements INodeType {
 					{ name: 'Transcribe', value: 'transcribe', description: 'Convert speech in audio file to text' },
 					{ name: 'Diarize', value: 'diarize', description: 'Split audio by speakers and return timestamps' },
 					{ name: 'Sentiment Analysis', value: 'sentiment', description: 'Detect sentiment/emotion in audio' },
-					{ name: 'Summarize', value: 'summarize', description: 'Generate an AI summary of audio' },
+					{ name: 'Summarize', value: 'summarize', description: 'Generate an AI summary of audio or text' },
 				],
 				default: 'transcribe',
-				description: 'Select what to do with audio file',
+				description: 'Select what to do with input',
 			},
 			{
 				displayName: 'Model',
@@ -118,6 +119,27 @@ export class PalatineSpeechNode implements INodeType {
 			},
 
 			// Summarize-only
+			{
+				displayName: 'Input Type',
+				name: 'summarizeInput',
+				type: 'options',
+				options: [
+					{ name: 'File', value: 'file', description: 'Summarize an uploaded file (binary)' },
+					{ name: 'Text', value: 'text', description: 'Summarize provided text (no file needed)' },
+				],
+				default: 'file',
+				description: 'Choose what to summarize',
+				displayOptions: { show: { task: ['summarize'] } },
+			},
+			{
+				displayName: 'Text',
+				name: 'summarizeText',
+				type: 'string',
+				typeOptions: { rows: 6 },
+				default: '',
+				description: 'Text to summarize (used only when Input Type = Text)',
+				displayOptions: { show: { task: ['summarize'], summarizeInput: ['text'] } },
+			},
 			{
 				displayName: 'AI Task',
 				name: 'summarizeTask',
@@ -218,6 +240,21 @@ export class PalatineSpeechNode implements INodeType {
 			return undefined;
 		};
 
+		const getStatusUrl = (task: Task, taskId: string): string => {
+			switch (task) {
+				case 'transcribe':
+					return `${baseUrl}/api/v1/transcribe/task_status/${taskId}`;
+				case 'diarize':
+					return `${baseUrl}/api/v1/diarization/task_status/${taskId}`;
+				case 'sentiment':
+					return `${baseUrl}/api/v1/sentiment_analysis/task_status/${taskId}`;
+				case 'summarize':
+					return `${baseUrl}/api/v1/ai_service/task_status/${taskId}`;
+				default:
+					return `${baseUrl}/api/v1/transcribe/task_status/${taskId}`;
+			}
+		};
+
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
@@ -243,11 +280,6 @@ export class PalatineSpeechNode implements INodeType {
 				pollIntervalMs = Math.min(900000, Math.max(500, pollIntervalMs));
 				maxPollAttempts = Math.min(1000, Math.max(1, maxPollAttempts));
 
-				const binaryData = items[i].binary?.[binaryProperty];
-				if (!binaryData) {
-					throw new NodeOperationError(this.getNode(), `No binary data in property "${binaryProperty}"`, { itemIndex: i });
-				}
-
 				let model: string | undefined;
 				let responseFormat: ResponseFormat = '';
 				if (task === 'transcribe') {
@@ -258,15 +290,35 @@ export class PalatineSpeechNode implements INodeType {
 				let summarizeTask: string | undefined;
 				let summarizeThinking = false;
 				let summarizePromptRaw = '';
+				let summarizeInput: SummarizeInput = 'file';
+				let summarizeTextRaw = '';
+
 				if (task === 'summarize') {
+					summarizeInput = (this.getNodeParameter('summarizeInput', i, 'file') as SummarizeInput) || 'file';
 					summarizeTask = this.getNodeParameter('summarizeTask', i) as string;
 					summarizeThinking = this.getNodeParameter('summarizeThinking', i) as boolean;
+
 					if (summarizeTask === 'user_prompt') {
 						summarizePromptRaw = (this.getNodeParameter('summarizePrompt', i, '') as string) || '';
 					}
+					if (summarizeInput === 'text') {
+						summarizeTextRaw = (this.getNodeParameter('summarizeText', i, '') as string) || '';
+						if (!summarizeTextRaw.trim()) {
+							throw new NodeOperationError(this.getNode(), 'Summarize (Text): "Text" is empty', { itemIndex: i });
+						}
+					}
 				}
 
-				const audioBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
+				const needsFile = task !== 'summarize' || summarizeInput === 'file';
+
+				// Binary only when needed
+				let binaryData: any | undefined;
+				if (needsFile) {
+					binaryData = items[i].binary?.[binaryProperty];
+					if (!binaryData) {
+						throw new NodeOperationError(this.getNode(), `No binary data in property "${binaryProperty}"`, { itemIndex: i });
+					}
+				}
 
 				let url: string;
 				let qs: Record<string, string | boolean> | undefined;
@@ -286,7 +338,12 @@ export class PalatineSpeechNode implements INodeType {
 						if (!summarizeTask) throw new NodeOperationError(this.getNode(), 'Summarize: summarizeTask is missing', { itemIndex: i });
 						const promptToSend =
 							summarizeTask === 'meeting_summary' ? '*' : (summarizePromptRaw || '').trim() || '*';
-						url = `${baseUrl}/api/v1/ai_service/summarize_file`;
+
+						url =
+							summarizeInput === 'text'
+								? `${baseUrl}/api/v1/ai_service/summarize_text`
+								: `${baseUrl}/api/v1/ai_service/summarize_file`;
+
 						qs = { task: summarizeTask, prompt: promptToSend, thinking: summarizeThinking };
 						break;
 					}
@@ -294,37 +351,53 @@ export class PalatineSpeechNode implements INodeType {
 						throw new NodeOperationError(this.getNode(), `Unknown task: ${task}`, { itemIndex: i });
 				}
 
-				// Multipart
-				const form = new FormData();
-				const fileName = binaryData.fileName || 'audio';
-				const mimeType = binaryData.mimeType || 'audio/mpeg';
-				const u8 = new Uint8Array(audioBuffer);
-				form.append('file', new Blob([u8], { type: mimeType }), fileName);
+				// Multipart only when file is needed
+				let form: any | undefined;
+				let fileName = '';
+				let mimeType = '';
 
-				if (model) form.append('model', model);
+				if (needsFile) {
+					const audioBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
-				// IMPORTANT: some backends accept response_format in FORM, even if docs say query
-				if (task === 'transcribe' && responseFormat) form.append('response_format', responseFormat);
+					form = new FormData();
+					fileName = binaryData.fileName || 'audio';
+					mimeType = binaryData.mimeType || 'audio/mpeg';
+					const u8 = new Uint8Array(audioBuffer);
+					form.append('file', new Blob([u8], { type: mimeType }), fileName);
+
+					if (model) form.append('model', model);
+
+					// IMPORTANT: some backends accept response_format in FORM, even if docs say query
+					if (task === 'transcribe' && responseFormat) form.append('response_format', responseFormat);
+				}
 
 				// Debug storage
 				const debug: Record<string, any> = {};
 
-				// 1) Create task:
-				// Try JSON first (needed for task_id). If backend returns plain text immediately, JSON parsing may fail → retry as raw.
+				// 1) Create task
 				let createResp: any;
 				try {
-					createResp = await request(
-						{
-							method: 'POST',
-							url,
-							qs,
-							body: form,
-							json: true,
-						},
-						i,
-					);
+					const createOptions: IHttpRequestOptions =
+						task === 'summarize' && summarizeInput === 'text'
+							? {
+									method: 'POST',
+									url,
+									qs,
+									// Body is JSON string (application/json): JSON.stringify(text) will be sent when json:true
+									body: summarizeTextRaw,
+									json: true,
+							  }
+							: {
+									method: 'POST',
+									url,
+									qs,
+									body: form,
+									json: true,
+							  };
+
+					createResp = await request(createOptions, i);
 				} catch (e) {
-					// Retry as raw (sync subtitle/text response)
+					// Retry as raw (sync subtitle/text response) — mainly relevant for file endpoints
 					const raw = await request(
 						{
 							method: 'POST',
@@ -338,20 +411,22 @@ export class PalatineSpeechNode implements INodeType {
 
 					if (typeof raw === 'string') {
 						const t = raw.trim();
-						// If user requested subtitles and server returned them synchronously, return them.
-						const resultSync: Record<string, any> = { task, source_file: binaryData.fileName };
-						if (task === 'transcribe' && model) resultSync.model_used = model;
-						if (task === 'transcribe' && responseFormat) resultSync.response_format = responseFormat;
+						const resultSync: Record<string, any> = { task };
 
-						if (task === 'transcribe' && responseFormat) {
-							resultSync.subtitles = t;
+						if (task === 'summarize') {
+							resultSync.input_type = summarizeInput;
+							if (summarizeInput === 'file') resultSync.source_file = binaryData?.fileName;
+							if (summarizeInput === 'text') resultSync.source_text_chars = summarizeTextRaw.length;
+							resultSync.summary = t;
 						} else {
-							resultSync.transcription = t;
-						}
-						if (debugEnabled) {
-							resultSync.debug = { createRaw: t };
+							resultSync.source_file = binaryData?.fileName;
+							if (task === 'transcribe' && model) resultSync.model_used = model;
+							if (task === 'transcribe' && responseFormat) resultSync.response_format = responseFormat;
+							if (task === 'transcribe' && responseFormat) resultSync.subtitles = t;
+							else resultSync.transcription = t;
 						}
 
+						if (debugEnabled) resultSync.debug = { createRaw: t };
 						returnData.push({ json: resultSync, binary: items[i].binary, pairedItem: { item: i } });
 						continue;
 					}
@@ -366,7 +441,7 @@ export class PalatineSpeechNode implements INodeType {
 
 				// 2) Poll status if async
 				if (taskId) {
-					const statusUrl = `${baseUrl}/api/v1/transcribe/task_status/${taskId}`;
+					const statusUrl = getStatusUrl(task, taskId);
 
 					let statusPayload: any = null;
 					let completed = false;
@@ -401,7 +476,7 @@ export class PalatineSpeechNode implements INodeType {
 
 					if (debugEnabled) debug.statusJson = statusPayload;
 
-					// 3) If response_format requested → attempt to fetch formatted output in multiple ways
+					// 3) If response_format requested → attempt to fetch formatted output (transcribe only)
 					if (task === 'transcribe' && responseFormat) {
 						// A) Try raw from status endpoint
 						try {
@@ -412,8 +487,10 @@ export class PalatineSpeechNode implements INodeType {
 									qs: { response_format: responseFormat },
 									json: false,
 									headers: {
-										// often helps content negotiation
-										Accept: responseFormat === 'vtt' ? 'text/vtt, text/plain;q=0.9, */*;q=0.8' : 'text/plain, */*;q=0.8',
+										Accept:
+											responseFormat === 'vtt'
+												? 'text/vtt, text/plain;q=0.9, */*;q=0.8'
+												: 'text/plain, */*;q=0.8',
 									} as any,
 								},
 								i,
@@ -431,7 +508,7 @@ export class PalatineSpeechNode implements INodeType {
 							if (debugEnabled) debug.rawWithFormatError = (e as Error).message || String(e);
 						}
 
-						// B) Try JSON from status endpoint with response_format (some APIs put formatted text in a field)
+						// B) Try JSON from status endpoint with response_format
 						try {
 							const jsonWithFormat = await request(
 								{
@@ -446,7 +523,11 @@ export class PalatineSpeechNode implements INodeType {
 							if (debugEnabled) debug.jsonWithFormat = jsonWithFormat;
 
 							const maybeText =
-								(jsonWithFormat && (jsonWithFormat.text || jsonWithFormat.transcription || jsonWithFormat.data?.text || jsonWithFormat.result?.text)) ??
+								(jsonWithFormat &&
+									(jsonWithFormat.text ||
+										jsonWithFormat.transcription ||
+										jsonWithFormat.data?.text ||
+										jsonWithFormat.result?.text)) ??
 								undefined;
 
 							if (typeof maybeText === 'string') {
@@ -460,7 +541,7 @@ export class PalatineSpeechNode implements INodeType {
 						}
 
 						// C) If status JSON contains a URL to download result → fetch it
-						const downloadUrl = findFirstUrl(statusPayload);
+						const downloadUrl = findFirstUrl(finalResponse);
 						if (downloadUrl) {
 							try {
 								const downloaded = await request(
@@ -470,7 +551,10 @@ export class PalatineSpeechNode implements INodeType {
 										qs: { response_format: responseFormat },
 										json: false,
 										headers: {
-											Accept: responseFormat === 'vtt' ? 'text/vtt, text/plain;q=0.9, */*;q=0.8' : 'text/plain, */*;q=0.8',
+											Accept:
+												responseFormat === 'vtt'
+													? 'text/vtt, text/plain;q=0.9, */*;q=0.8'
+													: 'text/plain, */*;q=0.8',
 										} as any,
 									},
 									i,
@@ -494,20 +578,26 @@ export class PalatineSpeechNode implements INodeType {
 				}
 
 				// Output
-				const result: Record<string, any> = {
-					task,
-					source_file: binaryData.fileName,
-				};
+				const result: Record<string, any> = { task };
+
+				if (task === 'summarize') {
+					result.input_type = summarizeInput;
+					if (summarizeInput === 'file') result.source_file = binaryData?.fileName;
+					if (summarizeInput === 'text') {
+						result.source_text_chars = summarizeTextRaw.length;
+						if (debugEnabled) result.source_text = summarizeTextRaw;
+					}
+				} else {
+					result.source_file = binaryData?.fileName;
+				}
 
 				if (task === 'transcribe' && model) result.model_used = model;
 				if (task === 'transcribe' && responseFormat) result.response_format = responseFormat;
 
 				if (task === 'transcribe') {
 					if (responseFormat && typeof finalResponse === 'string') {
-						// subtitles mode
 						result.subtitles = finalResponse.trim();
 					} else {
-						// plain text mode
 						result.transcription =
 							typeof finalResponse === 'string'
 								? finalResponse.trim()
@@ -544,4 +634,3 @@ export class PalatineSpeechNode implements INodeType {
 		return [returnData];
 	}
 }
-в
