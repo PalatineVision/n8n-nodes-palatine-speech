@@ -7,7 +7,6 @@ import type {
 } from 'n8n-workflow';
 
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
-import FormData from 'form-data';
 
 type Task = 'transcribe' | 'diarize' | 'sentiment' | 'summarize';
 type ResponseFormat = '' | 'srt' | 'vtt';
@@ -20,10 +19,37 @@ const TASK_POLL_DEFAULTS: Record<Task, { pollIntervalMs: number; maxPollAttempts
 	summarize: { pollIntervalMs: 20000, maxPollAttempts: 500 },
 };
 
+function createMultipartFormData(
+	fileBuffer: Buffer,
+	fileName: string,
+	mimeType: string,
+	extraFields?: Record<string, string>,
+): any {
+	const FormDataCtor = (globalThis as any).FormData;
+	const BlobCtor = (globalThis as any).Blob;
+
+	if (!FormDataCtor || !BlobCtor) {
+		throw new Error('FormData/Blob is not available. Please update Node.js/n8n runtime.');
+	}
+
+	const form = new FormDataCtor();
+	const blob = new BlobCtor([fileBuffer], { type: mimeType || 'application/octet-stream' });
+
+	form.append('file', blob, fileName);
+
+	if (extraFields) {
+		for (const [k, v] of Object.entries(extraFields)) {
+			if (v !== undefined && v !== null) form.append(k, String(v));
+		}
+	}
+
+	return form;
+}
+
 export class PalatineSpeechNode implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Palatine Speech',
-		name: 'PalatineSpeechNode',
+		name: 'palatineSpeech',
 		icon: {
 			light: 'file:logoLight.svg',
 			dark: 'file:logoDark.svg',
@@ -38,11 +64,11 @@ export class PalatineSpeechNode implements INodeType {
 		credentials: [{ name: 'PalatineSpeechNodeApi', required: true }],
 		properties: [
 			{
-				displayName: 'File',
+				displayName: 'Binary Property',
 				name: 'binaryProperty',
 				type: 'string',
 				default: 'data',
-				description: 'Name of binary property that contains audio file (used for file-based tasks)',
+				description: 'Name of the binary property that contains the input file (used for file-based tasks)',
 			},
 			{
 				displayName: 'Task',
@@ -140,7 +166,7 @@ export class PalatineSpeechNode implements INodeType {
 				displayOptions: { show: { task: ['summarize'] } },
 			},
 
-			// Options (moved to bottom, including summarize UI)
+			// Options (keep at bottom)
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -174,7 +200,7 @@ export class PalatineSpeechNode implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const credentials = await this.getCredentials('PalatineSpeechNodeApi');
-		const baseUrl = String(credentials.baseUrl || '').replace(/\/$/, '');
+		const baseUrl = String((credentials as any).baseUrl || '').replace(/\/$/, '');
 		if (!baseUrl) throw new NodeOperationError(this.getNode(), 'Credential "Base URL" is empty');
 
 		const request = async (options: IHttpRequestOptions, itemIndex: number) => {
@@ -260,7 +286,6 @@ export class PalatineSpeechNode implements INodeType {
 
 				const uiOptions =
 					(this.getNodeParameter('options', i, {}) as { pollIntervalMs?: number; maxPollAttempts?: number }) ?? {};
-
 				const legacyParams = (this.getNode().parameters || {}) as { pollIntervalMs?: number; maxPollAttempts?: number };
 
 				let pollIntervalMs = (uiOptions.pollIntervalMs ?? legacyParams.pollIntervalMs ?? 500) as number;
@@ -311,7 +336,6 @@ export class PalatineSpeechNode implements INodeType {
 
 				const needsFile = task !== 'summarize' || summarizeInput === 'file';
 
-				// Binary only when needed
 				let binaryData: any | undefined;
 				if (needsFile) {
 					binaryData = items[i].binary?.[binaryProperty];
@@ -342,7 +366,8 @@ export class PalatineSpeechNode implements INodeType {
 							throw new NodeOperationError(this.getNode(), 'Summarize: summarizeTask is missing', { itemIndex: i });
 						}
 
-						const promptToSend = summarizeTask === 'meeting_summary' ? '*' : (summarizePromptRaw || '').trim() || '*';
+						const promptToSend =
+							summarizeTask === 'meeting_summary' ? '*' : (summarizePromptRaw || '').trim() || '*';
 
 						url =
 							summarizeInput === 'text'
@@ -357,12 +382,10 @@ export class PalatineSpeechNode implements INodeType {
 						throw new NodeOperationError(this.getNode(), `Unknown task: ${task}`, { itemIndex: i });
 				}
 
-				// Build request payload
 				let createResp: any;
 
 				try {
 					if (task === 'summarize' && summarizeInput === 'text') {
-						// API expects JSON string body (i.e. "text..."), which n8n will serialize when json:true
 						createResp = await request(
 							{
 								method: 'POST',
@@ -374,20 +397,13 @@ export class PalatineSpeechNode implements INodeType {
 							i,
 						);
 					} else {
-						// Multipart for file tasks
-						const form = new FormData();
-
 						const fileName = binaryData.fileName || 'audio';
-						const mimeType = binaryData.mimeType || 'audio/mpeg';
+						const mimeType = binaryData.mimeType || 'application/octet-stream';
 						const fileBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
-						form.append('file', fileBuffer, { filename: fileName, contentType: mimeType });
+						const form = createMultipartFormData(fileBuffer, fileName, mimeType, task === 'transcribe' && model ? { model } : undefined);
 
-						if (task === 'transcribe' && model) {
-							form.append('model', model);
-						}
-
-						// Some backends accept response_format in form as well
+						// Some backends accept response_format in form
 						if (task === 'transcribe' && responseFormat) {
 							form.append('response_format', responseFormat);
 						}
@@ -397,36 +413,32 @@ export class PalatineSpeechNode implements INodeType {
 								method: 'POST',
 								url,
 								qs,
-								body: form as any,
-								headers: (form as any).getHeaders?.() ?? {},
+								body: form,
 								json: true,
 							},
 							i,
 						);
 					}
 				} catch (e) {
-					// Retry as raw (sync plain text/subtitles responses)
-					if (task === 'summarize' && summarizeInput === 'text') {
-						throw e;
-					}
+					if (task === 'summarize' && summarizeInput === 'text') throw e;
 
-					const form = new FormData();
+					// Retry as raw (sync plain text/subtitles responses)
 					const fileName = binaryData?.fileName || 'audio';
-					const mimeType = binaryData?.mimeType || 'audio/mpeg';
+					const mimeType = binaryData?.mimeType || 'application/octet-stream';
 					const fileBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
-					form.append('file', fileBuffer, { filename: fileName, contentType: mimeType });
+					const form = createMultipartFormData(fileBuffer, fileName, mimeType, task === 'transcribe' && model ? { model } : undefined);
 
-					if (task === 'transcribe' && model) form.append('model', model);
-					if (task === 'transcribe' && responseFormat) form.append('response_format', responseFormat);
+					if (task === 'transcribe' && responseFormat) {
+						form.append('response_format', responseFormat);
+					}
 
 					const raw = await request(
 						{
 							method: 'POST',
 							url,
 							qs,
-							body: form as any,
-							headers: (form as any).getHeaders?.() ?? {},
+							body: form,
 							json: false,
 						},
 						i,
@@ -464,7 +476,6 @@ export class PalatineSpeechNode implements INodeType {
 				let finalResponse: any = createResp;
 				const taskId = extractTaskId(createResp);
 
-				// Poll status if async
 				if (taskId) {
 					const statusUrl = getStatusUrl(task, taskId);
 
@@ -499,7 +510,6 @@ export class PalatineSpeechNode implements INodeType {
 						);
 					}
 
-					// If response_format requested → attempt to fetch formatted output (transcribe only)
 					if (task === 'transcribe' && responseFormat) {
 						// A) Try raw from status endpoint
 						try {
@@ -509,12 +519,6 @@ export class PalatineSpeechNode implements INodeType {
 									url: statusUrl,
 									qs: { response_format: responseFormat },
 									json: false,
-									headers: {
-										Accept:
-											responseFormat === 'vtt'
-												? 'text/vtt, text/plain;q=0.9, */*;q=0.8'
-												: 'text/plain, */*;q=0.8',
-									} as any,
 								},
 								i,
 							);
@@ -529,38 +533,8 @@ export class PalatineSpeechNode implements INodeType {
 							// ignore
 						}
 
-						// B) Try JSON from status endpoint with response_format
-						try {
-							const jsonWithFormat = await request(
-								{
-									method: 'GET',
-									url: statusUrl,
-									qs: { response_format: responseFormat },
-									json: true,
-								},
-								i,
-							);
-
-							const maybeText =
-								(jsonWithFormat &&
-									(jsonWithFormat.text ||
-										jsonWithFormat.transcription ||
-										jsonWithFormat.data?.text ||
-										jsonWithFormat.result?.text)) ??
-								undefined;
-
-							if (typeof maybeText === 'string') {
-								const t = maybeText.trim();
-								if ((responseFormat === 'srt' && looksLikeSrt(t)) || (responseFormat === 'vtt' && looksLikeVtt(t))) {
-									finalResponse = t;
-								}
-							}
-						} catch {
-							// ignore
-						}
-
 						// C) If status JSON contains a URL to download result → fetch it
-						const downloadUrl = findFirstUrl(finalResponse);
+						const downloadUrl = findFirstUrl(statusPayload);
 						if (downloadUrl) {
 							try {
 								const downloaded = await request(
@@ -569,12 +543,6 @@ export class PalatineSpeechNode implements INodeType {
 										url: downloadUrl,
 										qs: { response_format: responseFormat },
 										json: false,
-										headers: {
-											Accept:
-												responseFormat === 'vtt'
-													? 'text/vtt, text/plain;q=0.9, */*;q=0.8'
-													: 'text/plain, */*;q=0.8',
-										} as any,
 									},
 									i,
 								);
@@ -592,7 +560,6 @@ export class PalatineSpeechNode implements INodeType {
 					}
 				}
 
-				// Output
 				const result: Record<string, any> = { task };
 
 				if (task === 'summarize') {

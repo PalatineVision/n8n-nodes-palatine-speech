@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "n8n node for integrating Palatine Speech API into workflow",
 	"license": "MIT",
-	"homepage": "",
+	"homepage": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n",
 	"keywords": [
 		"n8n-community-node-package"
 	],
@@ -13,7 +13,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/package.json"
+		"url": "git+https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",
@@ -25,20 +25,24 @@
 		"prepublishOnly": "n8n-node prerelease"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"icons",
+		"README.md",
+		"LICENSE"
 	],
 	"n8n": {
 		"n8nNodesApiVersion": 1,
 		"strict": true,
 		"credentials": [
-			"dist/credentials/PalatineSpeechNodeApi.credentials.js",
+			"dist/credentials/PalatineSpeechNodeApi.credentials.js"
 		],
 		"nodes": [
-			"dist/nodes/GithubIssues/PalatineSpeechNode.node.js",
+			"dist/nodes/PalatineSpeechNode/PalatineSpeechNode.node.js"
 		]
 	},
 	"devDependencies": {
 		"@n8n/node-cli": "*",
+		"@types/node": "^25.2.0",
 		"eslint": "9.32.0",
 		"prettier": "3.6.2",
 		"release-it": "^19.0.4",
