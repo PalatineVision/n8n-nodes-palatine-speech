@@ -7,15 +7,13 @@ import type {
 } from 'n8n-workflow';
 
 export class PalatineSpeechNodeApi implements ICredentialType {
-	name = 'PalatineSpeechNodeApi';
+	name = 'palatineSpeechNodeApi';
 	displayName = 'Palatine Speech API';
 	documentationUrl = 'https://docs.speech.palatine.ru/api-reference';
 
 	// If icons/ is in the package root:
-	icon: Icon = {
-		light: 'file:../../icons/logoLight.svg',
-		dark: 'file:../../icons/logoDark.svg',
-	};
+	icon: Icon = { light: 'file:../icons/logoLight.svg', dark: 'file:../icons/logoDark.svg' };
+;
 
 	properties: INodeProperties[] = [
 		{
