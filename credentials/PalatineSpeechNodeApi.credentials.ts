@@ -1,9 +1,10 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon, ICredentialTestRequest } from 'n8n-workflow';
 
 export class PalatineSpeechNodeApi implements ICredentialType {
 	name = 'PalatineSpeechNodeApi';
 	displayName = 'Palatine Speech API';
 	documentationUrl = 'https://docs.speech.palatine.ru/api-reference';
+    icon: Icon = { light: 'file:../icons/logoLight.svg', dark: 'file:../icons/logoDark.svg' };
 
 	properties: INodeProperties[] = [
 		{
@@ -32,5 +33,11 @@ export class PalatineSpeechNodeApi implements ICredentialType {
 			},
 		},
 	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.palatine.ru',
+			url: '/api/llm/v1/models',
+			method: 'GET',
+		},
+	};
 }
-
