@@ -1,38 +1,92 @@
 {
   "name": "n8n-nodes-palatine-speech",
-  "version": "0.1.0",
+  "version": "1.0.6",
   "description": "n8n node for integrating Palatine Speech API into workflow",
   "license": "MIT",
-  "homepage": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n",
-  "keywords": ["n8n-community-node-package"],
-  "author": { "name": "palatine_speech", "email": "denkob1617@gmail.com" },
+  "homepage": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n#readme",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "palatine",
+    "speech",
+    "transcription",
+    "diarization",
+    "sentiment",
+    "summarization",
+    "llm"
+  ],
+  "author": {
+    "name": "palatine_speech",
+    "email": "denkob1617@gmail.com"
+  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n.git"
+    "url": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n.git"
   },
+  "bugs": {
+    "url": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "icons",
+    "README.md",
+    "LICENSE.md",
+    "CODE_OF_CONDUCT.md"
+  ],
   "scripts": {
     "build": "n8n-node build",
     "build:watch": "tsc --watch",
     "dev": "n8n-node dev",
     "lint": "n8n-node lint",
     "lint:fix": "n8n-node lint --fix",
-    "release": "n8n-node release",
-    "prepublishOnly": "n8n-node prerelease"
+
+    "prepack": "npm run lint && npm run build",
+
+    "release": "n8n-node release"
   },
-  "files": ["dist", "icons", "README.md", "LICENSE"],
   "n8n": {
     "n8nNodesApiVersion": 1,
     "strict": true,
-    "credentials": ["dist/credentials/PalatineSpeechNodeApi.credentials.js"],
-    "nodes": ["dist/nodes/PalatineSpeechNode/PalatineSpeech.node.js"]
+    "credentials": [
+      "dist/credentials/PalatineSpeechNodeApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/PalatineSpeech/PalatineSpeech.node.js"
+    ]
   },
   "devDependencies": {
-    "@n8n/node-cli": "*",
+    "@n8n/node-cli": "^0.18.0",
     "@types/node": "^25.2.0",
     "eslint": "9.32.0",
     "prettier": "3.6.2",
     "release-it": "^19.0.4",
     "typescript": "5.9.2"
   },
-  "peerDependencies": { "n8n-workflow": "*" }
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "release-it": {
+    "git": {
+      "commitMessage": "chore: release v${version}",
+      "tagName": "v${version}",
+      "requireCleanWorkingDir": true,
+      "requireUpstream": true
+    },
+    "github": {
+      "release": true
+    },
+    "npm": {
+      "publish": true,
+      "publishArgs": [
+        "--provenance",
+        "--access",
+        "public"
+      ]
+    }
+  }
 }
