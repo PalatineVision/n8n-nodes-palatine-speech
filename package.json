@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-palatine-speech",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "n8n node for integrating Palatine Speech API into workflow",
   "license": "MIT",
   "homepage": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n#readme",
@@ -44,9 +44,7 @@
     "dev": "n8n-node dev",
     "lint": "n8n-node lint",
     "lint:fix": "n8n-node lint --fix",
-
     "prepack": "npm run lint && npm run build",
-
     "release": "n8n-node release"
   },
   "n8n": {
