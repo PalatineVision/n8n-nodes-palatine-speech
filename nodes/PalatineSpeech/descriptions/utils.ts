@@ -59,6 +59,7 @@ function unwrapFinalPayload(payload: unknown): unknown {
 
 function isTerminalFailure(payload: unknown): boolean {
 	if (!isObject(payload)) return false;
+
 	const s =
 		normalizeStatus(payload.status) ||
 		normalizeStatus(payload.state) ||
@@ -88,7 +89,26 @@ function looksLikeSrt(text: string): boolean {
 }
 
 function looksLikeVtt(text: string): boolean {
-	return /^\s*WEBVTT\b/.test(text) || /\d{2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}/.test(text);
+	return (
+		/^\s*WEBVTT\b/.test(text) ||
+		/\d{2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}/.test(text)
+	);
+}
+
+function toText(value: unknown): string | undefined {
+	if (typeof value === 'string') return value;
+
+	if (Buffer.isBuffer(value)) return value.toString('utf8');
+
+	// Some runtimes may return ArrayBuffer/TypedArray
+	if (value instanceof ArrayBuffer) return Buffer.from(value).toString('utf8');
+
+	if (ArrayBuffer.isView(value)) {
+		// Uint8Array, etc.
+		return Buffer.from(value.buffer).toString('utf8');
+	}
+
+	return undefined;
 }
 
 function findFirstUrl(obj: unknown): string | undefined {
@@ -190,11 +210,109 @@ async function authedRequest(this: IExecuteSingleFunctions, options: IHttpReques
 	}
 }
 
+function safeStringify(value: unknown): string {
+	if (typeof value === 'string') return value;
+	if (value === null || value === undefined) return '';
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
+
+function parseMaybeJson(body: unknown): unknown {
+	const maybeText = toText(body);
+	if (maybeText !== undefined) {
+		const t = maybeText.trim();
+		if (!t) return '';
+		if (t.startsWith('{') || t.startsWith('[')) {
+			try {
+				return JSON.parse(t);
+			} catch {
+				return maybeText;
+			}
+		}
+		return maybeText;
+	}
+
+	return body;
+}
+
+type DiarizeSegment = {
+	start?: number;
+	end?: number;
+	speaker?: string;
+	segment_id?: number;
+	text?: string;
+};
+
+function pad2(n: number): string {
+	return String(n).padStart(2, '0');
+}
+
+function pad3(n: number): string {
+	return String(n).padStart(3, '0');
+}
+
+function formatTimeSrt(seconds: number): string {
+	const msTotal = Math.max(0, Math.round(seconds * 1000));
+	const ms = msTotal % 1000;
+	const totalSec = (msTotal - ms) / 1000;
+	const s = totalSec % 60;
+	const totalMin = (totalSec - s) / 60;
+	const m = totalMin % 60;
+	const h = (totalMin - m) / 60;
+	return `${pad2(h)}:${pad2(m)}:${pad2(s)},${pad3(ms)}`;
+}
+
+function formatTimeVtt(seconds: number): string {
+	const msTotal = Math.max(0, Math.round(seconds * 1000));
+	const ms = msTotal % 1000;
+	const totalSec = (msTotal - ms) / 1000;
+	const s = totalSec % 60;
+	const totalMin = (totalSec - s) / 60;
+	const m = totalMin % 60;
+	const h = (totalMin - m) / 60;
+	return `${pad2(h)}:${pad2(m)}:${pad2(s)}.${pad3(ms)}`;
+}
+
+function buildSubtitlesFromSegments(
+	segments: DiarizeSegment[],
+	fmt: 'srt' | 'vtt',
+): string {
+	const lines: string[] = [];
+
+	if (fmt === 'vtt') {
+		lines.push('WEBVTT', '');
+	}
+
+	let idx = 1;
+	for (const seg of segments) {
+		const start = typeof seg.start === 'number' ? seg.start : 0;
+		const end = typeof seg.end === 'number' ? seg.end : start;
+
+		const speaker = typeof seg.speaker === 'string' && seg.speaker.trim() ? seg.speaker.trim() : 'SPEAKER';
+		const content = typeof seg.text === 'string' && seg.text.trim() ? seg.text.trim() : speaker;
+
+		const from = fmt === 'srt' ? formatTimeSrt(start) : formatTimeVtt(start);
+		const to = fmt === 'srt' ? formatTimeSrt(end) : formatTimeVtt(end);
+
+		// Both SRT and VTT can have cue indexes; for VTT it's optional but OK
+		lines.push(String(idx));
+		lines.push(`${from} --> ${to}`);
+		lines.push(content);
+		lines.push('');
+		idx++;
+	}
+
+	return lines.join('\n').trimEnd();
+}
+
 async function pollTask(
 	this: IExecuteSingleFunctions,
 	operation: string,
 	taskId: string,
-	responseFormat?: string,
+	responseFormatForDiarize?: string,
 ): Promise<{ finalResponse: unknown; statusPayload: unknown }> {
 	const baseUrl = await getBaseUrlFromCreds.call(this);
 	if (!baseUrl) throw new NodeOperationError(this.getNode(), 'Credential "Base URL" is empty.');
@@ -209,23 +327,31 @@ async function pollTask(
 	for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
 		statusPayload = await authedRequest.call(this, { method: 'GET', url: statusUrl, json: true });
 
-		if (isTerminalFailure(statusPayload)) throw new NodeOperationError(this.getNode(), `Task ${taskId} failed.`);
+		if (isTerminalFailure(statusPayload)) {
+			throw new NodeOperationError(this.getNode(), `Task ${taskId} failed.`);
+		}
 
 		if (isTerminalSuccess(statusPayload)) {
 			let finalResponse: unknown = unwrapFinalPayload(statusPayload);
 
-			if (operation === 'transcribe' && responseFormat) {
+			// response_format ONLY for diarize (not transcribe)
+			if (operation === 'diarize' && responseFormatForDiarize && responseFormatForDiarize !== 'json') {
+				// 1) try statusUrl with qs
 				try {
 					const raw = await authedRequest.call(this, {
 						method: 'GET',
 						url: statusUrl,
-						qs: { response_format: responseFormat },
+						qs: { response_format: responseFormatForDiarize },
 						json: false,
 					} as IHttpRequestOptions);
 
-					if (typeof raw === 'string') {
-						const t = raw.trim();
-						if ((responseFormat === 'srt' && looksLikeSrt(t)) || (responseFormat === 'vtt' && looksLikeVtt(t))) {
+					const rawText = toText(raw);
+					if (rawText !== undefined) {
+						const t = rawText.trim();
+						if (
+							(responseFormatForDiarize === 'srt' && looksLikeSrt(t)) ||
+							(responseFormatForDiarize === 'vtt' && looksLikeVtt(t))
+						) {
 							finalResponse = t;
 						}
 					}
@@ -233,19 +359,24 @@ async function pollTask(
 					// ignore
 				}
 
+				// 2) try download url from payload
 				const downloadUrl = findFirstUrl(statusPayload);
 				if (downloadUrl) {
 					try {
 						const downloaded = await authedRequest.call(this, {
 							method: 'GET',
 							url: downloadUrl,
-							qs: { response_format: responseFormat },
+							qs: { response_format: responseFormatForDiarize },
 							json: false,
 						} as IHttpRequestOptions);
 
-						if (typeof downloaded === 'string') {
-							const t = downloaded.trim();
-							if ((responseFormat === 'srt' && looksLikeSrt(t)) || (responseFormat === 'vtt' && looksLikeVtt(t))) {
+						const downloadedText = toText(downloaded);
+						if (downloadedText !== undefined) {
+							const t = downloadedText.trim();
+							if (
+								(responseFormatForDiarize === 'srt' && looksLikeSrt(t)) ||
+								(responseFormatForDiarize === 'vtt' && looksLikeVtt(t))
+							) {
 								finalResponse = t;
 							}
 						}
@@ -267,35 +398,6 @@ async function pollTask(
 	);
 }
 
-function safeStringify(value: unknown): string {
-	if (typeof value === 'string') return value;
-	if (value === null || value === undefined) return '';
-	try {
-		return JSON.stringify(value);
-	} catch {
-		return String(value);
-	}
-}
-
-function parseMaybeJson(body: unknown): unknown {
-	if (Buffer.isBuffer(body)) return body.toString('utf8');
-
-	if (typeof body === 'string') {
-		const t = body.trim();
-		if (!t) return '';
-		if (t.startsWith('{') || t.startsWith('[')) {
-			try {
-				return JSON.parse(t);
-			} catch {
-				return t;
-			}
-		}
-		return t;
-	}
-
-	return body;
-}
-
 // -----------------------------
 // Speech/AI postReceive (polling)
 // -----------------------------
@@ -305,7 +407,12 @@ export async function postReceivePalatine(
 	responseData: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const operation = String(this.getNodeParameter('operation'));
-	const responseFormat = operation === 'transcribe' ? String(this.getNodeParameter('responseFormat', '')) : '';
+
+	// response_format only for diarize
+	const diarizeResponseFormat =
+		operation === 'diarize'
+			? String(this.getNodeParameter('responseFormat', 'json') || 'json')
+			: undefined;
 
 	const createResp: unknown = parseMaybeJson(responseData.body);
 
@@ -313,7 +420,7 @@ export async function postReceivePalatine(
 	let finalResponse: unknown = createResp;
 
 	if (taskId) {
-		const polled = await pollTask.call(this, operation, taskId, responseFormat || undefined);
+		const polled = await pollTask.call(this, operation, taskId, diarizeResponseFormat);
 		finalResponse = polled.finalResponse;
 	}
 
@@ -330,11 +437,8 @@ export async function postReceivePalatine(
 
 			const model = String(this.getNodeParameter('model', '') || '');
 			if (model) result.model_used = model;
-			if (responseFormat) result.response_format = responseFormat;
 
-			if (responseFormat && typeof finalResponse === 'string') {
-				result.subtitles = finalResponse.trim();
-			} else if (typeof finalResponse === 'string') {
+			if (typeof finalResponse === 'string') {
 				result.transcription = finalResponse.trim();
 			} else if (isObject(finalResponse)) {
 				const t = (finalResponse as AnyRecord).text ?? (finalResponse as AnyRecord).transcription;
@@ -345,7 +449,25 @@ export async function postReceivePalatine(
 		} else if (operation === 'diarize') {
 			result.task = 'diarize';
 			result.source_file = sourceFile;
-			result.diarization = isObject(finalResponse) ? (finalResponse as IDataObject) : safeStringify(finalResponse);
+			result.response_format = diarizeResponseFormat ?? 'json';
+
+			if (diarizeResponseFormat && diarizeResponseFormat !== 'json') {
+				// Preferred: API already returned SRT/VTT string
+				if (typeof finalResponse === 'string') {
+					result.subtitles = finalResponse.trim();
+				} else if (isObject(finalResponse)) {
+					// Fallback: API returned JSON (segments). Generate subtitles locally.
+					const segmentsRaw = (finalResponse as AnyRecord).segments;
+					const segments = Array.isArray(segmentsRaw) ? (segmentsRaw as unknown as DiarizeSegment[]) : [];
+					const fmt = diarizeResponseFormat === 'vtt' ? 'vtt' : 'srt';
+					result.subtitles = buildSubtitlesFromSegments(segments, fmt);
+				} else {
+					result.subtitles = safeStringify(finalResponse);
+				}
+			} else {
+				// JSON mode
+				result.diarization = isObject(finalResponse) ? (finalResponse as IDataObject) : safeStringify(finalResponse);
+			}
 		} else if (operation === 'sentiment') {
 			result.task = 'sentiment';
 			result.source_file = sourceFile;
@@ -403,12 +525,10 @@ export async function preSendTranscribe(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
+	// response_format removed from transcribe
 	return await preSendFile.call(this, requestOptions, (formData) => {
 		const model = String(this.getNodeParameter('model', '') || '');
-		const responseFormat = String(this.getNodeParameter('responseFormat', '') || '');
-
 		if (model) formData.append('model', model);
-		if (responseFormat) formData.append('response_format', responseFormat);
 	});
 }
 
@@ -424,7 +544,7 @@ export async function preSendSummarizeText(
 }
 
 // -----------------------------
-// LLM Chat Completions
+// LLM Chat Completions exports (needed by llm.ts)
 // -----------------------------
 export async function preSendChatCompletions(
 	this: IExecuteSingleFunctions,
@@ -464,10 +584,7 @@ export async function preSendChatCompletions(
 	const responseFormatJsonRaw = typeof opts.responseFormatJson === 'string' ? opts.responseFormatJson : '';
 	const formatRaw = typeof opts.format === 'string' ? opts.format : '';
 
-	const payload: AnyRecord = {
-		model,
-		messages,
-	};
+	const payload: AnyRecord = { model, messages };
 
 	if (Number.isFinite(temperature)) payload.temperature = temperature;
 	if (Number.isFinite(maxTokens)) payload.max_tokens = maxTokens;

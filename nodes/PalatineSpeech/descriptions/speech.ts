@@ -100,12 +100,12 @@ export const SpeechFields: INodeProperties[] = [
 		name: 'responseFormat',
 		type: 'options',
 		options: [
-			{ name: 'Plain Text', value: '', description: 'Return plain text (default)' },
+			{ name: 'JSON', value: 'json', description: 'Return JSON' },
 			{ name: 'SRT', value: 'srt', description: 'SubRip subtitles (.srt)' },
 			{ name: 'VTT', value: 'vtt', description: 'WebVTT subtitles (.vtt)' },
 		],
-		displayOptions: { show: { resource: ['speech'], operation: ['transcribe'] } },
-		default: '',
-		description: 'Format of returned result',
+		displayOptions: { show: { resource: ['speech'], operation: ['diarize'] } },
+		default: 'json',
+		description: 'Format of returned diarization result',
 	},
 ];
