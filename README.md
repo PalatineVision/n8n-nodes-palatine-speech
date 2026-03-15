@@ -46,6 +46,10 @@ Determines the emotional tone of speech in audio/video (and can also analyze tex
 
 Generates a structured summary from audio/video (or from already available text). In addition to built-in scenarios such as `meeting_summary`, it supports `user_prompt` — you can provide a custom prompt for the LLM to produce output in the structure you need (bullet points, decisions and action items, risks, Q&A, etc.).
 
+### [Chat Completions — OpenAI-compatible chat](https://docs.speech.palatine.ru/documentation/quick_start/chat_completions)
+
+Creates a chat completion from a list of messages (`system`, `user`, `assistant`) using Palatine’s OpenAI-compatible endpoint. You can choose the model, tune generation with parameters like `temperature` and `max_tokens`, and optionally enable `thinking` for deeper reasoning.
+
 ## Installation
 
 1. In your n8n instance, go to **Settings > Community Nodes → Install**
