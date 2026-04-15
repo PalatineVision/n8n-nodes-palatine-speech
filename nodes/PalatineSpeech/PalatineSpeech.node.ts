@@ -5,6 +5,8 @@ import { AiFields, AiOperations } from './descriptions/ai';
 import { LlmFields, LlmOperations } from './descriptions/llm';
 import { CommonFields } from './descriptions/common';
 
+import { getLlmModels } from './GenericFunctions';
+
 export class PalatineSpeech implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Palatine Speech',
@@ -23,7 +25,6 @@ export class PalatineSpeech implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [{ name: 'palatineSpeechNodeApi', required: true }],
-
 		requestDefaults: {
 			method: 'POST',
 			baseURL:
@@ -32,7 +33,6 @@ export class PalatineSpeech implements INodeType {
 				'Content-Type': 'application/json',
 			},
 		},
-
 		properties: [
 			{
 				displayName: 'Resource',
@@ -58,5 +58,11 @@ export class PalatineSpeech implements INodeType {
 
 			...CommonFields,
 		],
+	};
+
+	methods = {
+		listSearch: {
+			getLlmModels,
+		},
 	};
 }

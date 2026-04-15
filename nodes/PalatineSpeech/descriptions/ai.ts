@@ -25,7 +25,8 @@ export const AiOperations: INodeProperties[] = [
 						headers: { 'Content-Type': 'multipart/form-data' },
 						qs: {
 							task: '={{$parameter["summarizeTask"]}}',
-							prompt: '={{ $parameter["summarizeTask"] === "meeting_summary" ? "*" : ($parameter["prompt"] || "*") }}',
+							prompt:
+								'={{ $parameter["summarizeTask"] === "meeting_summary" ? "*" : ($parameter["prompt"] || "*") }}',
 							thinking: '={{$parameter["thinking"]}}',
 						},
 					},
@@ -52,7 +53,8 @@ export const AiOperations: INodeProperties[] = [
 						headers: { 'Content-Type': 'text/plain; charset=utf-8' },
 						qs: {
 							task: '={{$parameter["summarizeTask"]}}',
-							prompt: '={{ $parameter["summarizeTask"] === "meeting_summary" ? "*" : ($parameter["prompt"] || "*") }}',
+							prompt:
+								'={{ $parameter["summarizeTask"] === "meeting_summary" ? "*" : ($parameter["prompt"] || "*") }}',
 							thinking: '={{$parameter["thinking"]}}',
 						},
 					},
@@ -71,14 +73,13 @@ export const AiFields: INodeProperties[] = [
 		name: 'summarizeTask',
 		type: 'options',
 		options: [
-			{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Meeting summary format' },
-			{ name: 'User Prompt', value: 'user_prompt', description: 'Use a custom prompt' },
+			{ name: 'Meeting Summary', value: 'meeting_summary', description: 'Meeting summary output format' },
+			{ name: 'User Prompt', value: 'user_prompt', description: 'Use custom prompt' },
 		],
 		default: 'meeting_summary',
 		description: 'Summarization mode',
 		displayOptions: { show: { resource: ['ai'], operation: ['summarizeFile', 'summarizeText'] } },
 	},
-
 	{
 		displayName: 'Prompt',
 		name: 'prompt',
@@ -89,7 +90,6 @@ export const AiFields: INodeProperties[] = [
 			show: { resource: ['ai'], operation: ['summarizeFile', 'summarizeText'], summarizeTask: ['user_prompt'] },
 		},
 	},
-
 	{
 		displayName: 'Thinking',
 		name: 'thinking',
@@ -98,7 +98,6 @@ export const AiFields: INodeProperties[] = [
 		description: 'Whether to enable "thinking" mode',
 		displayOptions: { show: { resource: ['ai'], operation: ['summarizeFile', 'summarizeText'] } },
 	},
-
 	{
 		displayName: 'Text',
 		name: 'text',

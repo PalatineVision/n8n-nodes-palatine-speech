@@ -36,6 +36,10 @@ function isObject(value: unknown): value is AnyRecord {
 	return typeof value === 'object' && value !== null;
 }
 
+function isPlainObject(value: unknown): value is AnyRecord {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function normalizeStatus(value: unknown): string {
 	return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
@@ -100,15 +104,29 @@ function toText(value: unknown): string | undefined {
 
 	if (Buffer.isBuffer(value)) return value.toString('utf8');
 
-	// Some runtimes may return ArrayBuffer/TypedArray
 	if (value instanceof ArrayBuffer) return Buffer.from(value).toString('utf8');
 
-	if (ArrayBuffer.isView(value)) {
-		// Uint8Array, etc.
-		return Buffer.from(value.buffer).toString('utf8');
-	}
+	if (ArrayBuffer.isView(value)) return Buffer.from(value.buffer).toString('utf8');
 
 	return undefined;
+}
+
+function parseMaybeJson(body: unknown): unknown {
+	const maybeText = toText(body);
+	if (maybeText !== undefined) {
+		const t = maybeText.trim();
+		if (!t) return '';
+		if (t.startsWith('{') || t.startsWith('[')) {
+			try {
+				return JSON.parse(t);
+			} catch {
+				return maybeText;
+			}
+		}
+		return maybeText;
+	}
+
+	return body;
 }
 
 function findFirstUrl(obj: unknown): string | undefined {
@@ -183,8 +201,8 @@ function taskKindForOperation(operation: string): TaskKind {
 
 function getPollingConfig(this: IExecuteSingleFunctions, taskKind: TaskKind): PollDefaults {
 	const polling = (this.getNodeParameter('polling', {}) as IDataObject) ?? {};
-	let pollIntervalMs = Number(polling.pollIntervalMs ?? 500);
-	let maxPollAttempts = Number(polling.maxPollAttempts ?? 200);
+	let pollIntervalMs = Number((polling as AnyRecord).pollIntervalMs ?? 500);
+	let maxPollAttempts = Number((polling as AnyRecord).maxPollAttempts ?? 200);
 
 	const defaults = TASK_POLL_DEFAULTS[taskKind];
 
@@ -220,24 +238,9 @@ function safeStringify(value: unknown): string {
 	}
 }
 
-function parseMaybeJson(body: unknown): unknown {
-	const maybeText = toText(body);
-	if (maybeText !== undefined) {
-		const t = maybeText.trim();
-		if (!t) return '';
-		if (t.startsWith('{') || t.startsWith('[')) {
-			try {
-				return JSON.parse(t);
-			} catch {
-				return maybeText;
-			}
-		}
-		return maybeText;
-	}
-
-	return body;
-}
-
+// -----------------------------
+// Diarize: SRT/VTT fallback builder
+// -----------------------------
 type DiarizeSegment = {
 	start?: number;
 	end?: number;
@@ -276,10 +279,7 @@ function formatTimeVtt(seconds: number): string {
 	return `${pad2(h)}:${pad2(m)}:${pad2(s)}.${pad3(ms)}`;
 }
 
-function buildSubtitlesFromSegments(
-	segments: DiarizeSegment[],
-	fmt: 'srt' | 'vtt',
-): string {
+function buildSubtitlesFromSegments(segments: DiarizeSegment[], fmt: 'srt' | 'vtt'): string {
 	const lines: string[] = [];
 
 	if (fmt === 'vtt') {
@@ -297,7 +297,6 @@ function buildSubtitlesFromSegments(
 		const from = fmt === 'srt' ? formatTimeSrt(start) : formatTimeVtt(start);
 		const to = fmt === 'srt' ? formatTimeSrt(end) : formatTimeVtt(end);
 
-		// Both SRT and VTT can have cue indexes; for VTT it's optional but OK
 		lines.push(String(idx));
 		lines.push(`${from} --> ${to}`);
 		lines.push(content);
@@ -308,6 +307,9 @@ function buildSubtitlesFromSegments(
 	return lines.join('\n').trimEnd();
 }
 
+// -----------------------------
+// Polling
+// -----------------------------
 async function pollTask(
 	this: IExecuteSingleFunctions,
 	operation: string,
@@ -399,7 +401,7 @@ async function pollTask(
 }
 
 // -----------------------------
-// Speech/AI postReceive (polling)
+// Speech + AI postReceive (includes summarizeFile/summarizeText)
 // -----------------------------
 export async function postReceivePalatine(
 	this: IExecuteSingleFunctions,
@@ -408,15 +410,14 @@ export async function postReceivePalatine(
 ): Promise<INodeExecutionData[]> {
 	const operation = String(this.getNodeParameter('operation'));
 
-	// response_format only for diarize
 	const diarizeResponseFormat =
 		operation === 'diarize'
 			? String(this.getNodeParameter('responseFormat', 'json') || 'json')
 			: undefined;
 
 	const createResp: unknown = parseMaybeJson(responseData.body);
-
 	const taskId = extractTaskId(createResp);
+
 	let finalResponse: unknown = createResp;
 
 	if (taskId) {
@@ -441,7 +442,7 @@ export async function postReceivePalatine(
 			if (typeof finalResponse === 'string') {
 				result.transcription = finalResponse.trim();
 			} else if (isObject(finalResponse)) {
-				const t = (finalResponse as AnyRecord).text ?? (finalResponse as AnyRecord).transcription;
+				const t = finalResponse.text ?? finalResponse.transcription;
 				result.transcription = typeof t === 'string' ? t : safeStringify(finalResponse);
 			} else {
 				result.transcription = safeStringify(finalResponse);
@@ -452,12 +453,10 @@ export async function postReceivePalatine(
 			result.response_format = diarizeResponseFormat ?? 'json';
 
 			if (diarizeResponseFormat && diarizeResponseFormat !== 'json') {
-				// Preferred: API already returned SRT/VTT string
 				if (typeof finalResponse === 'string') {
 					result.subtitles = finalResponse.trim();
 				} else if (isObject(finalResponse)) {
-					// Fallback: API returned JSON (segments). Generate subtitles locally.
-					const segmentsRaw = (finalResponse as AnyRecord).segments;
+					const segmentsRaw = finalResponse.segments;
 					const segments = Array.isArray(segmentsRaw) ? (segmentsRaw as unknown as DiarizeSegment[]) : [];
 					const fmt = diarizeResponseFormat === 'vtt' ? 'vtt' : 'srt';
 					result.subtitles = buildSubtitlesFromSegments(segments, fmt);
@@ -465,7 +464,6 @@ export async function postReceivePalatine(
 					result.subtitles = safeStringify(finalResponse);
 				}
 			} else {
-				// JSON mode
 				result.diarization = isObject(finalResponse) ? (finalResponse as IDataObject) : safeStringify(finalResponse);
 			}
 		} else if (operation === 'sentiment') {
@@ -504,11 +502,13 @@ export async function preSendFile(
 ): Promise<IHttpRequestOptions> {
 	const binaryProperty = this.getNodeParameter('binaryProperty', 'data') as string;
 
-	const item = this.getInputData() as unknown as INodeExecutionData;
+	const item = this.getInputData()[0] as INodeExecutionData;
 	const binary = item?.binary?.[binaryProperty];
+
 	const fileName = String(binary?.fileName || 'audio');
 	const mimeType = String(binary?.mimeType || 'application/octet-stream');
 
+	// this signature worked in your project; keep it
 	const fileBuffer = await this.helpers.getBinaryDataBuffer(binaryProperty);
 	const u8 = Uint8Array.from(fileBuffer);
 
@@ -544,18 +544,115 @@ export async function preSendSummarizeText(
 }
 
 // -----------------------------
-// LLM Chat Completions exports (needed by llm.ts)
+// LLM helpers: json_schema parsing + minimal validation
+// -----------------------------
+function stripCodeFences(input: string): string {
+	const t = input.trim();
+	if (t.startsWith('```')) {
+		const firstNewline = t.indexOf('\n');
+		const lastFence = t.lastIndexOf('```');
+		if (firstNewline !== -1 && lastFence !== -1 && lastFence > firstNewline) {
+			return t.slice(firstNewline + 1, lastFence).trim();
+		}
+	}
+	return t;
+}
+
+function tryParseJsonFromContent(content: string): { ok: boolean; value: unknown; error?: string } {
+	const cleaned = stripCodeFences(content);
+	try {
+		return { ok: true, value: JSON.parse(cleaned) };
+	} catch (e) {
+		return { ok: false, value: null, error: e instanceof Error ? e.message : String(e) };
+	}
+}
+
+function validateSimpleJsonSchema(value: unknown, schema: AnyRecord, path: string, errors: string[], depth = 0): void {
+	if (depth > 12) return;
+
+	const type = typeof schema.type === 'string' ? schema.type : undefined;
+
+	if (type === 'object' || (!type && 'properties' in schema)) {
+		if (!isPlainObject(value)) {
+			errors.push(`${path} must be an object`);
+			return;
+		}
+
+		const props = isPlainObject(schema.properties) ? (schema.properties as AnyRecord) : {};
+		const required = Array.isArray(schema.required) ? (schema.required as unknown[]) : [];
+		const additional = schema.additionalProperties;
+
+		for (const r of required) {
+			if (typeof r === 'string' && !(r in value)) {
+				errors.push(`${path}.${r} is required`);
+			}
+		}
+
+		for (const [k, propSchema] of Object.entries(props)) {
+			if (!(k in value)) continue;
+			if (isPlainObject(propSchema)) {
+				validateSimpleJsonSchema((value as AnyRecord)[k], propSchema, `${path}.${k}`, errors, depth + 1);
+			}
+		}
+
+		if (additional === false) {
+			for (const k of Object.keys(value)) {
+				if (!(k in props)) errors.push(`${path}.${k} is not allowed`);
+			}
+		}
+
+		return;
+	}
+
+	if (type === 'array') {
+		if (!Array.isArray(value)) {
+			errors.push(`${path} must be an array`);
+			return;
+		}
+		const items = isPlainObject(schema.items) ? (schema.items as AnyRecord) : undefined;
+		if (items) {
+			for (let i = 0; i < value.length; i++) {
+				validateSimpleJsonSchema(value[i], items, `${path}[${i}]`, errors, depth + 1);
+			}
+		}
+		return;
+	}
+
+	if (type === 'string') {
+		if (typeof value !== 'string') errors.push(`${path} must be a string`);
+		return;
+	}
+	if (type === 'number') {
+		if (typeof value !== 'number' || Number.isNaN(value)) errors.push(`${path} must be a number`);
+		return;
+	}
+	if (type === 'integer') {
+		if (typeof value !== 'number' || !Number.isInteger(value)) errors.push(`${path} must be an integer`);
+		return;
+	}
+	if (type === 'boolean') {
+		if (typeof value !== 'boolean') errors.push(`${path} must be a boolean`);
+		return;
+	}
+}
+
+// -----------------------------
+// LLM preSend: NEW UI (thinking + responseFormatType + responseJsonSchema)
 // -----------------------------
 export async function preSendChatCompletions(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const model = String(this.getNodeParameter('llmModel', '') || '').trim();
-	if (!model) throw new NodeOperationError(this.getNode(), 'LLM: "Model" is empty.');
+	const model = String(this.getNodeParameter('llmModel', '', { extractValue: true }) || '').trim();
+	if (!model) throw new NodeOperationError(this.getNode(), 'LLM: "Model" is empty');
+
+	const thinking = Boolean(this.getNodeParameter('thinking', false));
+	const responseFormatType = String(this.getNodeParameter('responseFormatType', 'text') || 'text');
+	const responseJsonSchemaParam = this.getNodeParameter('responseJsonSchema', '');
 
 	const systemPrompt = String(this.getNodeParameter('systemPrompt', '') || '').trim();
 	const userMessage = String(this.getNodeParameter('userMessage', '') || '').trim();
-	if (!userMessage) throw new NodeOperationError(this.getNode(), 'LLM: "User Message" is empty.');
+	if (!userMessage) throw new NodeOperationError(this.getNode(), 'LLM: "User Message" is empty');
 
 	const historyRaw = (this.getNodeParameter('history', {}) as IDataObject) ?? {};
 	const historyMessages =
@@ -575,37 +672,47 @@ export async function preSendChatCompletions(
 	messages.push({ role: 'user', content: userMessage });
 
 	const opts = (this.getNodeParameter('llmOptions', {}) as IDataObject) ?? {};
+	const temperature = (opts as AnyRecord).temperature !== undefined ? Number((opts as AnyRecord).temperature) : undefined;
+	const maxTokens = (opts as AnyRecord).maxTokens !== undefined ? Number((opts as AnyRecord).maxTokens) : undefined;
+	const formatParam = (opts as AnyRecord).format;
 
-	const temperature = opts.temperature !== undefined ? Number(opts.temperature) : undefined;
-	const maxTokens = opts.maxTokens !== undefined ? Number(opts.maxTokens) : undefined;
-	const thinking = opts.thinking !== undefined ? Boolean(opts.thinking) : undefined;
-
-	const responseFormatMode = String(opts.responseFormatMode || 'none');
-	const responseFormatJsonRaw = typeof opts.responseFormatJson === 'string' ? opts.responseFormatJson : '';
-	const formatRaw = typeof opts.format === 'string' ? opts.format : '';
-
-	const payload: AnyRecord = { model, messages };
+	const payload: AnyRecord = { model, messages, thinking };
 
 	if (Number.isFinite(temperature)) payload.temperature = temperature;
 	if (Number.isFinite(maxTokens)) payload.max_tokens = maxTokens;
-	if (thinking !== undefined) payload.thinking = thinking;
 
-	if (responseFormatMode === 'json_object') {
+	if (responseFormatType === 'json_object') {
 		payload.response_format = { type: 'json_object' };
-	} else if (responseFormatMode === 'custom') {
-		try {
-			const rf = JSON.parse(String(responseFormatJsonRaw || '{}'));
-			if (rf && typeof rf === 'object') payload.response_format = rf as AnyRecord;
-		} catch {
-			throw new NodeOperationError(this.getNode(), 'LLM: "Response Format (JSON)" is not valid JSON.');
+	} else if (responseFormatType === 'json_schema') {
+		let schemaObj: AnyRecord | null = null;
+
+		if (typeof responseJsonSchemaParam === 'string') {
+			try {
+				schemaObj = JSON.parse(responseJsonSchemaParam || '{}') as AnyRecord;
+			} catch {
+				throw new NodeOperationError(this.getNode(), 'LLM: "JSON Schema" is not valid JSON');
+			}
+		} else if (isPlainObject(responseJsonSchemaParam)) {
+			schemaObj = responseJsonSchemaParam as AnyRecord;
 		}
+
+		if (!schemaObj || typeof schemaObj.name !== 'string' || !isPlainObject(schemaObj.schema)) {
+			throw new NodeOperationError(this.getNode(), 'LLM: "JSON Schema" must contain "name" and "schema" fields');
+		}
+
+		payload.response_format = { type: 'json_schema', json_schema: schemaObj };
 	}
 
-	try {
-		const fmt = JSON.parse(String(formatRaw || '{}'));
-		if (fmt && typeof fmt === 'object' && Object.keys(fmt as AnyRecord).length) payload.format = fmt as AnyRecord;
-	} catch {
-		throw new NodeOperationError(this.getNode(), 'LLM: "Format (Ollama JSON)" is not valid JSON.');
+	// Optional "format" (advanced)
+	if (typeof formatParam === 'string' && formatParam.trim()) {
+		try {
+			const fmt = JSON.parse(formatParam);
+			if (fmt && typeof fmt === 'object') payload.format = fmt as AnyRecord;
+		} catch {
+			throw new NodeOperationError(this.getNode(), 'LLM: "Format (Ollama JSON)" is not valid JSON');
+		}
+	} else if (isPlainObject(formatParam) && Object.keys(formatParam).length) {
+		payload.format = formatParam;
 	}
 
 	requestOptions.body = payload;
@@ -614,6 +721,9 @@ export async function preSendChatCompletions(
 	return requestOptions;
 }
 
+// -----------------------------
+// LLM postReceive: EXACT OUTPUT RULES YOU ASKED
+// -----------------------------
 export async function postReceiveLlmChat(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
@@ -621,34 +731,88 @@ export async function postReceiveLlmChat(
 ): Promise<INodeExecutionData[]> {
 	const body = parseMaybeJson(responseData.body);
 
+	const responseFormatType = String(this.getNodeParameter('responseFormatType', 'text') || 'text');
+	const schemaParam = this.getNodeParameter('responseJsonSchema', '');
+
+	let contentStr = '';
+	let id = '';
+	let model = '';
+	let created = 0;
+	let choices: IDataObject[] = [];
+	let usage: IDataObject = {};
+
+	if (isObject(body)) {
+		id = typeof body.id === 'string' ? body.id : '';
+		model = typeof body.model === 'string' ? body.model : '';
+		created = typeof body.created === 'number' ? body.created : 0;
+		choices = Array.isArray(body.choices) ? (body.choices as unknown as IDataObject[]) : [];
+		usage = isObject(body.usage) ? (body.usage as IDataObject) : {};
+
+		const first = Array.isArray(body.choices) ? body.choices[0] : undefined;
+		const msg = isObject(first) ? (first as AnyRecord).message : undefined;
+		const content = isObject(msg) ? (msg as AnyRecord).content : undefined;
+		contentStr = typeof content === 'string' ? content : '';
+	}
+
 	return items.map((item) => {
-		const out: IDataObject = {
-			id: '',
-			model: '',
-			created: 0,
-			text: '',
-			choices: [],
-			usage: {},
-			raw: body as IDataObject,
-		};
-
-		if (isObject(body)) {
-			out.id = typeof body.id === 'string' ? body.id : '';
-			out.model = typeof body.model === 'string' ? body.model : '';
-			out.created = typeof body.created === 'number' ? body.created : 0;
-			out.choices = Array.isArray(body.choices) ? (body.choices as unknown as IDataObject[]) : [];
-			out.usage = isObject(body.usage) ? (body.usage as IDataObject) : {};
-
-			const first = Array.isArray(body.choices) ? body.choices[0] : undefined;
-			const msg = isObject(first) ? (first as AnyRecord).message : undefined;
-			const content = isObject(msg) ? (msg as AnyRecord).content : undefined;
-			out.text = typeof content === 'string' ? content : '';
+		// TEXT: only answer
+		if (responseFormatType === 'text') {
+			return { json: { response: contentStr } as IDataObject, binary: item.binary };
 		}
 
-		return { json: out, binary: item.binary };
+		// JSON_OBJECT: metadata + raw + response, BUT WITHOUT parsed/schema_valid/schema_errors
+		if (responseFormatType === 'json_object') {
+			return {
+				json: {
+					id,
+					model,
+					created,
+					choices,
+					usage,
+				} as IDataObject,
+				binary: item.binary,
+			};
+		}
+
+		// JSON_SCHEMA: response + parsed + schema_valid + schema_errors
+		const parsedTry = contentStr.trim()
+			? tryParseJsonFromContent(contentStr)
+			: { ok: false, value: null, error: 'Empty response' };
+
+		const errors: string[] = [];
+
+		let schemaObj: AnyRecord | null = null;
+		if (typeof schemaParam === 'string') {
+			try {
+				schemaObj = JSON.parse(schemaParam || '{}') as AnyRecord;
+			} catch {
+				schemaObj = null;
+			}
+		} else if (isPlainObject(schemaParam)) {
+			schemaObj = schemaParam as AnyRecord;
+		}
+
+		if (!schemaObj || typeof schemaObj.name !== 'string' || !isPlainObject(schemaObj.schema)) {
+			errors.push('Schema config is invalid: expected { name: string, schema: object }');
+		} else if (!parsedTry.ok) {
+			errors.push(`Output is not valid JSON: ${parsedTry.error ?? 'unknown error'}`);
+		} else {
+			validateSimpleJsonSchema(parsedTry.value, schemaObj.schema as AnyRecord, '$', errors);
+		}
+
+		return {
+			json: {
+				response: contentStr,
+				parsed: (parsedTry.ok ? parsedTry.value : null) as IDataObject,
+				schema_valid: errors.length === 0,
+				schema_errors: errors,
+			} as IDataObject,
+			binary: item.binary,
+		};
 	});
 }
 
+// Optional (not used in UI now, but harmless)
 export async function postReceiveLlmModels(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
@@ -673,8 +837,8 @@ export async function postReceiveLlmModels(
 			const modelIds = data
 				.map((m): string | null => {
 					if (!isObject(m)) return null;
-					const id = (m as AnyRecord).id;
-					return typeof id === 'string' ? id : null;
+					const idv = (m as AnyRecord).id;
+					return typeof idv === 'string' ? idv : null;
 				})
 				.filter((x): x is string => typeof x === 'string');
 
