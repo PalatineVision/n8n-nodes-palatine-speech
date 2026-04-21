@@ -129,44 +129,7 @@ export const LlmFields: INodeProperties[] = [
 		description: 'The main user message',
 		displayOptions: { show: { resource: ['llm'], operation: ['chatCompletions'] } },
 	},
-
-	{
-		displayName: 'Conversation History',
-		name: 'history',
-		type: 'fixedCollection',
-		default: {},
-		placeholder: 'Add message',
-		typeOptions: { multipleValues: true },
-		description: 'Optional extra messages appended after System Prompt and before User Message',
-		displayOptions: { show: { resource: ['llm'], operation: ['chatCompletions'] } },
-		options: [
-			{
-				name: 'message',
-				displayName: 'Message',
-				values: [
-					{
-						displayName: 'Role',
-						name: 'role',
-						type: 'options',
-						default: 'assistant',
-						options: [
-							{ name: 'System', value: 'system' },
-							{ name: 'User', value: 'user' },
-							{ name: 'Assistant', value: 'assistant' },
-						],
-					},
-					{
-						displayName: 'Content',
-						name: 'content',
-						type: 'string',
-						typeOptions: { rows: 4 },
-						default: '',
-					},
-				],
-			},
-		],
-	},
-
+	    
 	{
 		displayName: 'Additional Options',
 		name: 'llmOptions',

@@ -654,21 +654,8 @@ export async function preSendChatCompletions(
 	const userMessage = String(this.getNodeParameter('userMessage', '') || '').trim();
 	if (!userMessage) throw new NodeOperationError(this.getNode(), 'LLM: "User Message" is empty');
 
-	const historyRaw = (this.getNodeParameter('history', {}) as IDataObject) ?? {};
-	const historyMessages =
-		(historyRaw.message as Array<{ role?: string; content?: string }> | undefined) ?? [];
-
 	const messages: Array<{ role: string; content: string }> = [];
-
 	if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-
-	for (const m of historyMessages) {
-		const role = String(m.role || '').trim();
-		const content = String(m.content || '').trim();
-		if (!role || !content) continue;
-		messages.push({ role, content });
-	}
-
 	messages.push({ role: 'user', content: userMessage });
 
 	const opts = (this.getNodeParameter('llmOptions', {}) as IDataObject) ?? {};

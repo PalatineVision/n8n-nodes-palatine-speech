@@ -83,11 +83,11 @@ export const SpeechFields: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		options: [
-			{ name: 'Palatine_small', value: 'palatine_small', description: 'Model used for transcription processing' },
+			{ name: 'Palatine_small', value: 'palatine_small', description: 'Fast, compact, efficient model for basic speech recognition tasks' },
 			{
 				name: 'Palatine_large_highspeed',
 				value: 'palatine_large_highspeed',
-				description: 'Model used for transcription processing',
+				description: 'Slower, more accurate model for complex and demanding scenarios',
 			},
 		],
 		displayOptions: { show: { resource: ['speech'], operation: ['transcribe'] } },
