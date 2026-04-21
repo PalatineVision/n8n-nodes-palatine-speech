@@ -41,7 +41,7 @@ export class PalatineSpeech implements INodeType {
 				noDataExpression: true,
 				options: [
 					{ name: 'Speech', value: 'speech' },
-					{ name: 'AI', value: 'ai' },
+					{ name: 'Meeting Summary', value: 'ai' },
 					{ name: 'LLM', value: 'llm' },
 				],
 				default: 'speech',

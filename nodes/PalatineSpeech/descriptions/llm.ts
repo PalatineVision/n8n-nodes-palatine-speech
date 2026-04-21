@@ -13,10 +13,10 @@ export const LlmOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Chat Completions',
+				name: 'Message a Model',
 				value: 'chatCompletions',
-				description: 'Send a chat conversation and get a model response (OpenAI-compatible)',
-				action: 'Create chat completion',
+				description: 'Get a response from the model using LLM Palatine Speech',
+				action: 'Message a model',
 				routing: {
 					request: {
 						url: '/api/llm/v1/chat/completions',
