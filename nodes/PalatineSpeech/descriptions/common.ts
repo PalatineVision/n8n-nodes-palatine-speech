@@ -24,8 +24,8 @@ export const CommonFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['speech', 'ai'],
-				operation: ['transcribe', 'diarize', 'sentiment', 'summarizeFile', 'summarizeText'],
+				resource: ['speech'],
+				operation: ['transcribe', 'diarize', 'sentiment'],
 			},
 		},
 		options: [
@@ -35,7 +35,7 @@ export const CommonFields: INodeProperties[] = [
 				type: 'number',
 				typeOptions: { minValue: 500, maxValue: 900000 },
 				default: 500,
-				description: 'Polling interval. Min 500, max 900000. (Summarize default: 20000).',
+				description: 'Polling interval. Min 500, max 900000.',
 			},
 			{
 				displayName: 'Max Poll Attempts',
@@ -43,7 +43,39 @@ export const CommonFields: INodeProperties[] = [
 				type: 'number',
 				typeOptions: { minValue: 1, maxValue: 1000 },
 				default: 200,
-				description: 'Polling attempts. Min 1, max 1000. (Summarize default: 500).',
+				description: 'Polling attempts. Min 1, max 1000.',
+			},
+		],
+	},
+
+	{
+		displayName: 'Polling Options',
+		name: 'polling',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['ai'],
+				operation: ['summarizeFile', 'summarizeText'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Polling Interval (Ms)',
+				name: 'pollIntervalMs',
+				type: 'number',
+				typeOptions: { minValue: 500, maxValue: 900000 },
+				default: 20000,
+				description: 'Polling interval. Min 500, max 900000.',
+			},
+			{
+				displayName: 'Max Poll Attempts',
+				name: 'maxPollAttempts',
+				type: 'number',
+				typeOptions: { minValue: 1, maxValue: 1000 },
+				default: 500,
+				description: 'Polling attempts. Min 1, max 1000.',
 			},
 		],
 	},
