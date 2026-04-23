@@ -69,7 +69,7 @@ export const AiOperations: INodeProperties[] = [
 
 export const AiFields: INodeProperties[] = [
 	{
-		displayName: 'AI Task',
+		displayName: 'Summarize Mode',
 		name: 'summarizeTask',
 		type: 'options',
 		options: [
@@ -85,7 +85,7 @@ export const AiFields: INodeProperties[] = [
 		name: 'prompt',
 		type: 'string',
 		default: '',
-		description: 'Used only with User Prompt',
+		description: 'Custom prompt for summarization',
 		displayOptions: {
 			show: { resource: ['ai'], operation: ['summarizeFile', 'summarizeText'], summarizeTask: ['user_prompt'] },
 		},
@@ -95,7 +95,7 @@ export const AiFields: INodeProperties[] = [
 		name: 'thinking',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to enable "thinking" mode',
+		description: 'Whether enable thinking mode for improved reasoning on complex tasks',
 		displayOptions: { show: { resource: ['ai'], operation: ['summarizeFile', 'summarizeText'] } },
 	},
 	{
