@@ -93,6 +93,13 @@ Extract the audio track → `Transcribe` + `Diarize` → convert the result to S
 Processing voice messages with `Sentiment Analysis` helps determine the emotional tone of the request. \
 Based on the result, tickets can be created in the CRM and a priority can be assigned.
 
+* **Action items extraction** \
+For meeting transcripts, support tickets, or long
+email threads, use **Message a Model** with **JSON Schema** to extract structured
+action items (task title, owner, due date, priority) and key risks; the output can be
+automatically pushed into Jira/Notion/Asana or posted to the team chat for quick
+follow-up.
+
 ## Compatibility
 
 This node was tested with n8n v1.39.1 and later.
@@ -105,8 +112,7 @@ This node was tested with n8n v1.39.1 and later.
 
 ## Keywords
 
-`n8n-community-node-package`, `n8n`, `palatine`, `speech-to-text`, `transcribe`, `transcription`, `stt`, `audio`, `ai`, `automation`, `voice-to-text`, `speech-recognition`, `audio-transcription`, `audio2text`, `audio-processing`, `diarization`, `speaker-diarization`, `speaker-segmentation`, `summarization`, `audio-summarization`, `sentiment-analysis`, `emotion-detection`, `tone-analysis`
-
+`n8n-community-node-package`, `n8n`, `palatine`, `speech-to-text`, `transcribe`, `transcription`, `stt`, `audio`, `ai`, `automation`, `voice-to-text`, `speech-recognition`, `audio-transcription`, `audio2text`, `audio-processing`, `diarization`, `speaker-diarization`, `speaker-segmentation`, `summarization`, `audio-summarization`, `sentiment-analysis`, `emotion-detection`, `tone-analysis`, `llm`, `chat-completions`, `openai-compatible`, `structured-output`, `json-schema`.
 ## License
 MIT
 
