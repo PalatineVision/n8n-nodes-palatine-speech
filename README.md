@@ -4,7 +4,7 @@
 
 > Designed for seamless integration of **Palatine Speech API** into n8n workflows.
 
-This is an n8n community node that integrates [Palatine Speech](https://speech.palatine.ru/) into your workflows and enables audio processing tasks such as transcription, diarization, sentiment analysis, and summarization.
+This is an n8n community node that integrates [Palatine Speech](https://speech.palatine.ru/) into your workflows and enables audio processing capabilities such as transcription, diarization, sentiment analysis, and summarization.
 
 ## Navigation
 
@@ -23,38 +23,49 @@ This is an n8n community node that integrates [Palatine Speech](https://speech.p
 
 ## Supported Operations
 
-For details on each operation, see the Palatine Speech [documentation](https://docs.speech.palatine.ru/documentation/quick_start/transcription). You can also open the documentation by clicking the operation title below.
+For details on each operation, see the Palatine Speech [documentation](https://docs.speech.palatine.ru/documentation/quick_start/transcription).
 
 * [Full list of supported file types](https://docs.speech.palatine.ru/documentation/technical_information/supported_files)
 * [Full list of supported languages](https://docs.speech.palatine.ru/documentation/technical_information/supported_languages)
 
 ### [Transcribe — speech transcription](https://docs.speech.palatine.ru/api-reference/transcribe/transcribe-polling-api/transcribe)
 
-Speech-to-Text (STT) converts audio/video into a written transcript.
-It supports multiple languages and can automatically detect the language spoken in the recording.
-It is well-suited for calls, interviews, lectures, and any other recordings where you need an accurate text version of what was said.
+Speech-to-Text (STT) converts audio/video into a written transcript.  
+It supports multiple languages and can automatically detect the language spoken in the recording.  
+It is well-suited for calls, interviews, lectures, and any other recordings where an accurate transcript is required.
 
 ### [Diarize — speaker diarization](https://docs.speech.palatine.ru/api-reference/diarization/diarization-polling-api/diarize)
 
-Speaker diarization separates a recording into speaker segments and identifies who is speaking in each segment. This is useful for meetings and interviews, where keeping the conversation structure by speaker matters.
+Speaker diarization segments audio by speaker and labels speaker turns.  
+This is useful for meetings and interviews, where maintaining conversation structure matters.
 
 ### [Sentiment Analysis — sentiment analysis](https://docs.speech.palatine.ru/api-reference/sentiment-analysis/sentiment-analysis-polling-api/sentiment-analysis)
 
-Determines the emotional tone of speech in audio/video (and can also analyze text). The result is a ranked list of sentiment classes with probabilities, where the first item is the most likely: `Very Negative`, `Negative`, `Neutral`, `Positive`, `Very Positive`.
+Determines the emotional tone of speech in audio/video (and can also analyze text).  
+The result is a ranked list of sentiment classes with probabilities, where the first item is the most likely:  
+`Very Negative`, `Negative`, `Neutral`, `Positive`, `Very Positive`.
 
 ### [Summarize — audio summarization](https://docs.speech.palatine.ru/api-reference/ai-service/ai-service/summarize-file)
 
-Generates a structured summary from audio/video (or from already available text). In addition to built-in scenarios such as `meeting_summary`, it supports `user_prompt` — you can provide a custom prompt for the LLM to produce output in the structure you need (bullet points, decisions and action items, risks, Q&A, etc.).
+Generates a structured summary from audio/video or pre-existing text.  
+In addition to built-in scenarios such as `meeting_summary`, it supports `user_prompt`, allowing you to define custom output structures (bullet points, decisions, action items, risks, Q&A, etc.).
 
 ### [Message to model — OpenAI-compatible chat](https://docs.speech.palatine.ru/documentation/quick_start/chat_completions)
 
-Get a response from the model using LLM Palatine Speech from a list of messages (`system`, `user`, `assistant`) using Palatine’s OpenAI-compatible endpoint. You can choose the model, tune generation with parameters like `temperature` and `max_tokens`, optionally enable `thinking` for deeper reasoninga and Response Format Type:  `Text`, `JSON Object`, `JSON Schema`.
+Generate a response from the Palatine Speech LLM using a list of messages (`system`, `user`, `assistant`).  
+You can select the model, tune generation parameters (`temperature`, `max_tokens`), and optionally enable `thinking` for deeper reasoning.
+
+Supported response formats:
+- `Text`
+- `JSON Object`
+- `JSON Schema`
 
 ## Installation
 
 1. In your n8n instance, go to **Settings > Community Nodes → Install**
 2. Enter: `n8n-nodes-palatine-speech`
 3. Click **Install**
+
 > ⚠️ Make sure the environment variable `N8N_COMMUNITY_PACKAGES_ENABLED=true` is set.
 
 ## Credentials
@@ -62,47 +73,41 @@ Get a response from the model using LLM Palatine Speech from a list of messages 
 1. Go to **Credentials → + Create**
 2. Find **Palatine Speech API**
 3. Fill in the fields:
-  * **API Key** — available in your Palatine Speech dashboard
-  * **Base URL** — default is `https://api.palatine.ru`
+   * **API Key** — available in your Palatine Speech dashboard  
+   * **Base URL** — default is `https://api.palatine.ru`
 
 ## Workflow Example
 
-1. `Webhook` → Receive an audio file
-2. `Config` → Configure parameters
-3. `Palatine Speech` → Transcribe the file
-4. `Create record` → Create a table record
-5. `Telegram` → Send the result to a chat
+1. `Webhook` → Receive an audio file  
+2. `Config` → Configure parameters  
+3. `Palatine Speech` → Transcribe the file  
+4. `Create record` → Create a table record  
+5. `Telegram` → Send the result to a chat  
 
 ![workflow example](https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/docs/assets/WorkflowExample.png)
 
 ## Use Cases
 
-* **Meeting summaries** \
-For meeting and interview recordings, it is recommended to use `Summarize` (`meeting_summary`): it produces a brief summary, a list of decisions, and group action items by owner and due date; the result can be sent to the team chat if needed. \
-For non-standard requests, specify `Prompt` in `Summarize` and provide the required instruction, for example: "Additionally, structure the agreements by deadlines and owners."
+* **Meeting summaries**  
+Use `Summarize` (`meeting_summary`) to generate summaries, decisions, and action items grouped by owner and due date.  
+Custom prompts can be used for additional structure.
 
-* **Lecture/webinar notes** \
-Session recording → `Transcribe` → generate a full transcript. \
-Save the resulting text alongside the session materials.
+* **Lecture/webinar notes**  
+Recording → `Transcribe` → full transcript saved alongside materials.
 
-* **Automatic subtitles for video** \
-Extract the audio track → `Transcribe` + `Diarize` → convert the result to SRT/VTT and attach it to the video. \
-`Transcribe` produces the transcript, while `Diarize` provides speaker segmentation for multi-speaker recordings.
+* **Automatic subtitles for video**  
+Extract audio → `Transcribe` + `Diarize` → convert to SRT/VTT.
 
-* **Customer support assistant** \
-Processing voice messages with `Sentiment Analysis` helps determine the emotional tone of the request. \
-Based on the result, tickets can be created in the CRM and a priority can be assigned.
+* **Customer support assistant**  
+Use `Sentiment Analysis` to determine tone and assign ticket priority.
 
-* **Action items extraction** \
-For meeting transcripts, support tickets, or long
-email threads, use **Message a Model** with **JSON Schema** to extract structured
-action items (task title, owner, due date, priority) and key risks; the output can be
-automatically pushed into Jira/Notion/Asana or posted to the team chat for quick
-follow-up.
+* **Action items extraction**  
+Use **Message to model** with **JSON Schema** to extract structured tasks (title, owner, due date, priority) and associated risks.  
+Results can be sent to Jira / Notion / Asana or team chat.
 
 ## Compatibility
 
-This node was tested with n8n v1.39.1 and later.
+Tested with n8n v1.39.1 and later.
 
 ## Useful Resources
 
@@ -112,7 +117,8 @@ This node was tested with n8n v1.39.1 and later.
 
 ## Keywords
 
-`n8n-community-node-package`, `n8n`, `palatine`, `speech-to-text`, `transcribe`, `transcription`, `stt`, `audio`, `ai`, `automation`, `voice-to-text`, `speech-recognition`, `audio-transcription`, `audio2text`, `audio-processing`, `diarization`, `speaker-diarization`, `speaker-segmentation`, `summarization`, `audio-summarization`, `sentiment-analysis`, `emotion-detection`, `tone-analysis`, `llm`, `chat-completions`, `openai-compatible`, `structured-output`, `json-schema`.
+`n8n-community-node-package`, `n8n`, `palatine`, `speech-to-text`, `transcribe`, `transcription`, `stt`, `audio`, `ai`, `automation`, `voice-to-text`, `speech-recognition`, `audio-transcription`, `audio2text`, `audio-processing`, `diarization`, `speaker-diarization`, `speaker-segmentation`, `summarization`, `audio-summarization`, `sentiment-analysis`, `emotion-detection`, `tone-analysis`, `llm`, `chat-completions`, `openai-compatible`, `structured-output`, `json-schema`
+
 ## License
 MIT
 
