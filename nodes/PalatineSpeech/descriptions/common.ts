@@ -9,8 +9,21 @@ export const CommonFields: INodeProperties[] = [
 		description: 'Name of the binary property that contains the input file',
 		displayOptions: {
 			show: {
-				resource: ['speech', 'ai'],
-				operation: ['transcribe', 'diarize', 'sentiment', 'summarizeFile'],
+				resource: ['transcription', 'diarize', 'sentiment'],
+			},
+		},
+		required: true,
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		default: 'data',
+		description: 'Name of the binary property that contains the input file',
+		displayOptions: {
+			show: {
+				resource: ['ai'],
+				operation: ['summarizeFile'],
 			},
 		},
 		required: true,
@@ -24,8 +37,7 @@ export const CommonFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['speech'],
-				operation: ['transcribe', 'diarize', 'sentiment'],
+				resource: ['transcription', 'diarize', 'sentiment'],
 			},
 		},
 		options: [

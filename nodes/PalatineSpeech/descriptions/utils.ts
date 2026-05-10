@@ -408,7 +408,17 @@ export async function postReceivePalatine(
 	items: INodeExecutionData[],
 	responseData: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const operation = String(this.getNodeParameter('operation'));
+	const resource = String(this.getNodeParameter('resource', '') || '');
+	const operationFromResource =
+		resource === 'transcription'
+			? 'transcribe'
+			: resource === 'diarize'
+				? 'diarize'
+				: resource === 'sentiment'
+					? 'sentiment'
+					: '';
+	const operation =
+		operationFromResource || String(this.getNodeParameter('operation', '') || '');
 
 	const diarizeResponseFormat =
 		operation === 'diarize'
