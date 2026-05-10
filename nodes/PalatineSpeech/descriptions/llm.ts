@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+﻿import type { INodeProperties } from 'n8n-workflow';
 
 export const LlmFields: INodeProperties[] = [
 	{
@@ -119,8 +119,9 @@ export const LlmFields: INodeProperties[] = [
 				type: 'number',
 				default: 1.0,
 				typeOptions: { minValue: 0, maxValue: 2, numberPrecision: 2 },
-				description: 'Sampling temperature (0–2)',
+				description: 'Sampling temperature (0-2)',
 			},
 		],
 	},
 ];
+
