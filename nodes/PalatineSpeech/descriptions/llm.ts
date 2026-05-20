@@ -82,7 +82,7 @@ export const LlmFields: INodeProperties[] = [
 		type: 'string',
 		typeOptions: { rows: 3 },
 		default: '',
-		description: 'Optional system instruction',
+		description: 'Optional system message that sets models behavior and tone',
 		displayOptions: { show: { resource: ['llm'] } },
 	},
 
@@ -93,7 +93,7 @@ export const LlmFields: INodeProperties[] = [
 		typeOptions: { rows: 6 },
 		default: '',
 		required: true,
-		description: 'The main user message',
+		description: 'The main message sent to model',
 		displayOptions: { show: { resource: ['llm'] } },
 	},
 	    
