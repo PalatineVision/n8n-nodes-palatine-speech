@@ -1,4 +1,36 @@
-﻿import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+
+import { postReceiveLlmChat, preSendChatCompletions } from './utils';
+
+export const LlmOperations: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: { resource: ['llm'] },
+		},
+		options: [
+			{
+				name: 'Message a Model',
+				value: 'chatCompletions',
+				description: 'Get a response from the model using LLM Palatine Speech',
+				action: 'Message a model',
+				routing: {
+					request: {
+						url: '/api/llm/v1/chat/completions',
+						method: 'POST',
+						returnFullResponse: true,
+					},
+					send: { preSend: [preSendChatCompletions] },
+					output: { postReceive: [postReceiveLlmChat] },
+				},
+			},
+		],
+		default: 'chatCompletions',
+	},
+];
 
 export const LlmFields: INodeProperties[] = [
 	{
@@ -8,7 +40,7 @@ export const LlmFields: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'Model to use',
-		displayOptions: { show: { resource: ['llm'] } },
+		displayOptions: { show: { resource: ['llm'], operation: ['chatCompletions'] } },
 		modes: [
 			{
 				displayName: 'From List',
@@ -28,16 +60,14 @@ export const LlmFields: INodeProperties[] = [
 			},
 		],
 	},
-
 	{
 		displayName: 'Thinking',
 		name: 'thinking',
 		type: 'boolean',
 		default: false,
 		description: 'Whether to enable extended reasoning mode (may increase latency and token usage)',
-		displayOptions: { show: { resource: ['llm'] } },
+		displayOptions: { show: { resource: ['llm'], operation: ['chatCompletions'] } },
 	},
-
 	{
 		displayName: 'Response Format Type',
 		name: 'responseFormatType',
@@ -49,9 +79,8 @@ export const LlmFields: INodeProperties[] = [
 			{ name: 'JSON Schema', value: 'json_schema' },
 		],
 		description: 'How the model should format its response',
-		displayOptions: { show: { resource: ['llm'] } },
+		displayOptions: { show: { resource: ['llm'], operation: ['chatCompletions'] } },
 	},
-
 	{
 		displayName: 'JSON Schema',
 		name: 'responseJsonSchema',
@@ -71,11 +100,11 @@ export const LlmFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['llm'],
+				operation: ['chatCompletions'],
 				responseFormatType: ['json_schema'],
 			},
 		},
 	},
-
 	{
 		displayName: 'System Prompt',
 		name: 'systemPrompt',
@@ -83,9 +112,8 @@ export const LlmFields: INodeProperties[] = [
 		typeOptions: { rows: 3 },
 		default: '',
 		description: 'Optional system message that sets models behavior and tone',
-		displayOptions: { show: { resource: ['llm'] } },
+		displayOptions: { show: { resource: ['llm'], operation: ['chatCompletions'] } },
 	},
-
 	{
 		displayName: 'User Message',
 		name: 'userMessage',
@@ -94,16 +122,15 @@ export const LlmFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description: 'The main message sent to model',
-		displayOptions: { show: { resource: ['llm'] } },
+		displayOptions: { show: { resource: ['llm'], operation: ['chatCompletions'] } },
 	},
-	    
 	{
 		displayName: 'Additional Options',
 		name: 'llmOptions',
 		type: 'collection',
 		placeholder: 'Add option',
 		default: {},
-		displayOptions: { show: { resource: ['llm'] } },
+		displayOptions: { show: { resource: ['llm'], operation: ['chatCompletions'] } },
 		options: [
 			{
 				displayName: 'Max Tokens',
@@ -124,4 +151,3 @@ export const LlmFields: INodeProperties[] = [
 		],
 	},
 ];
-

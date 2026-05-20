@@ -1,10 +1,9 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { SpeechFields } from './descriptions/speech';
+import { SpeechFields, SpeechOperations } from './descriptions/speech';
 import { AiFields, AiOperations } from './descriptions/ai';
-import { LlmFields } from './descriptions/llm';
+import { LlmFields, LlmOperations } from './descriptions/llm';
 import { CommonFields } from './descriptions/common';
-import { postReceiveLlmChat, postReceivePalatine, preSendFile, preSendChatCompletions, preSendTranscribe } from './descriptions/utils';
 
 import { getLlmModels } from './GenericFunctions';
 
@@ -22,7 +21,7 @@ export class PalatineSpeech implements INodeType {
 		group: ['transform'],
 		version: [3],
 		defaultVersion: 3,
-		subtitle: '={{$parameter["resource"] === "ai" ? $parameter["operation"] + ": " + $parameter["resource"] : $parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description:
 			`Transcribe audio, diarize speakers, analyze sentiment, generate AI summaries, or use OpenAI-compatible LLM Chat Completions via Palatine. Keywords: ${NODE_KEYWORDS}`,
 		defaults: { name: 'Palatine Speech' },
@@ -45,83 +44,22 @@ export class PalatineSpeech implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					{
-						name: 'Transcription',
-						value: 'transcription',
-						routing: {
-							request: {
-								url: '/api/v1/transcribe/do_transcribe',
-								method: 'POST',
-								returnFullResponse: true,
-								headers: { 'Content-Type': 'multipart/form-data' },
-							},
-							send: { preSend: [preSendTranscribe] },
-							output: { postReceive: [postReceivePalatine] },
-						},
-					},
-					{
-						name: 'Diarize',
-						value: 'diarize',
-						routing: {
-							request: {
-								url: '/api/v1/diarization/do_diarize',
-								method: 'POST',
-								returnFullResponse: true,
-								headers: { 'Content-Type': 'multipart/form-data' },
-							},
-							send: {
-								preSend: [
-									async function preSend(this, requestOptions) {
-										return await preSendFile.call(this, requestOptions);
-									},
-								],
-							},
-							output: { postReceive: [postReceivePalatine] },
-						},
-					},
-					{
-						name: 'Sentiment Analysis',
-						value: 'sentiment',
-						routing: {
-							request: {
-								url: '/api/v1/sentiment_analysis/analyze_file',
-								method: 'POST',
-								returnFullResponse: true,
-								headers: { 'Content-Type': 'multipart/form-data' },
-							},
-							send: {
-								preSend: [
-									async function preSend(this, requestOptions) {
-										return await preSendFile.call(this, requestOptions);
-									},
-								],
-							},
-							output: { postReceive: [postReceivePalatine] },
-						},
-					},
+					{ name: 'Transcription', value: 'transcription' },
+					{ name: 'Diarize', value: 'diarize' },
+					{ name: 'Sentiment Analysis', value: 'sentiment' },
 					{ name: 'Meeting Summary', value: 'ai' },
-					{
-						name: 'LLM',
-						value: 'llm',
-						routing: {
-							request: {
-								url: '/api/llm/v1/chat/completions',
-								method: 'POST',
-								returnFullResponse: true,
-							},
-							send: { preSend: [preSendChatCompletions] },
-							output: { postReceive: [postReceiveLlmChat] },
-						},
-					},
+					{ name: 'LLM', value: 'llm' },
 				],
 				default: 'transcription',
 			},
 
+			...SpeechOperations,
 			...SpeechFields,
 
 			...AiOperations,
 			...AiFields,
 
+			...LlmOperations,
 			...LlmFields,
 
 			...CommonFields,
