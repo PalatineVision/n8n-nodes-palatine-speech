@@ -107,7 +107,11 @@ export const SpeechFields: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		options: [
-			{ name: 'Palatine_small', value: 'palatine_small', description: 'Fast, compact, efficient model for basic speech recognition tasks' },
+			{
+				name: 'Palatine_small',
+				value: 'palatine_small',
+				description: 'Fast, compact, efficient model for basic speech recognition tasks',
+			},
 			{
 				name: 'Palatine_large_highspeed',
 				value: 'palatine_large_highspeed',
@@ -118,7 +122,6 @@ export const SpeechFields: INodeProperties[] = [
 		default: 'palatine_small',
 		description: 'Model used for transcription processing',
 	},
-
 	{
 		displayName: 'Response Format',
 		name: 'responseFormat',
