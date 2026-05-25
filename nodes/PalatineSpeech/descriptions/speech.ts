@@ -9,7 +9,7 @@ export const SpeechOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		displayOptions: {
-			show: { resource: ['transcription'] },
+			show: { resource: ['audio'] },
 		},
 		options: [
 			{
@@ -28,18 +28,6 @@ export const SpeechOperations: INodeProperties[] = [
 					output: { postReceive: [postReceivePalatine] },
 				},
 			},
-		],
-		default: 'transcribe',
-	},
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: { resource: ['diarize'] },
-		},
-		options: [
 			{
 				name: 'Diarize',
 				value: 'diarize',
@@ -62,18 +50,6 @@ export const SpeechOperations: INodeProperties[] = [
 					output: { postReceive: [postReceivePalatine] },
 				},
 			},
-		],
-		default: 'diarize',
-	},
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: { resource: ['sentiment'] },
-		},
-		options: [
 			{
 				name: 'Sentiment Analysis',
 				value: 'sentiment',
@@ -96,8 +72,36 @@ export const SpeechOperations: INodeProperties[] = [
 					output: { postReceive: [postReceivePalatine] },
 				},
 			},
+			{
+				name: 'Summarize File',
+				value: 'summarizeFile',
+				description: 'Generate an AI summary of an uploaded file',
+				action: 'Summarize a file',
+				routing: {
+					request: {
+						url: '/api/v1/ai_service/summarize_file',
+						method: 'POST',
+						returnFullResponse: true,
+						headers: { 'Content-Type': 'multipart/form-data' },
+						qs: {
+							task: '={{$parameter["summarizeTask"]}}',
+							prompt:
+								'={{ $parameter["summarizeTask"] === "meeting_summary" ? "*" : ($parameter["prompt"] || "*") }}',
+							thinking: '={{$parameter["thinking"]}}',
+						},
+					},
+					send: {
+						preSend: [
+							async function preSend(this, requestOptions) {
+								return await preSendFile.call(this, requestOptions);
+							},
+						],
+					},
+					output: { postReceive: [postReceivePalatine] },
+				},
+			},
 		],
-		default: 'sentiment',
+		default: 'transcribe',
 	},
 ];
 
@@ -118,7 +122,7 @@ export const SpeechFields: INodeProperties[] = [
 				description: 'Slower, more accurate model for complex and demanding scenarios',
 			},
 		],
-		displayOptions: { show: { resource: ['transcription'], operation: ['transcribe'] } },
+		displayOptions: { show: { resource: ['audio'], operation: ['transcribe'] } },
 		default: 'palatine_small',
 		description: 'Model used for transcription processing',
 	},
@@ -131,7 +135,7 @@ export const SpeechFields: INodeProperties[] = [
 			{ name: 'SRT', value: 'srt', description: 'SubRip subtitles (.srt)' },
 			{ name: 'VTT', value: 'vtt', description: 'WebVTT subtitles (.vtt)' },
 		],
-		displayOptions: { show: { resource: ['diarize'], operation: ['diarize'] } },
+		displayOptions: { show: { resource: ['audio'], operation: ['diarize'] } },
 		default: 'json',
 		description: 'Format of returned diarization result',
 	},

@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { postReceiveLlmChat, preSendChatCompletions } from './utils';
+import { postReceiveLlmChat, postReceivePalatine, preSendChatCompletions, preSendSummarizeText } from './utils';
 
 export const LlmOperations: INodeProperties[] = [
 	{
@@ -25,6 +25,28 @@ export const LlmOperations: INodeProperties[] = [
 					},
 					send: { preSend: [preSendChatCompletions] },
 					output: { postReceive: [postReceiveLlmChat] },
+				},
+			},
+			{
+				name: 'Summarize Text',
+				value: 'summarizeText',
+				description: 'Generate an AI summary of provided text',
+				action: 'Summarize text',
+				routing: {
+					request: {
+						url: '/api/v1/ai_service/summarize_text',
+						method: 'POST',
+						returnFullResponse: true,
+						headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+						qs: {
+							task: '={{$parameter["summarizeTask"]}}',
+							prompt:
+								'={{ $parameter["summarizeTask"] === "meeting_summary" ? "*" : ($parameter["prompt"] || "*") }}',
+							thinking: '={{$parameter["thinking"]}}',
+						},
+					},
+					send: { preSend: [preSendSummarizeText] },
+					output: { postReceive: [postReceivePalatine] },
 				},
 			},
 		],

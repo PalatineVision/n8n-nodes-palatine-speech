@@ -1,7 +1,7 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { SpeechFields, SpeechOperations } from './descriptions/speech';
-import { AiFields, AiOperations } from './descriptions/ai';
+import { AiFields } from './descriptions/ai';
 import { LlmFields, LlmOperations } from './descriptions/llm';
 import { CommonFields } from './descriptions/common';
 
@@ -44,19 +44,15 @@ export class PalatineSpeech implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					{ name: 'Diarize', value: 'diarize' },
+					{ name: 'Audio', value: 'audio' },
 					{ name: 'LLM', value: 'llm' },
-					{ name: 'Meeting Summary', value: 'ai' },
-					{ name: 'Sentiment Analysis', value: 'sentiment' },
-					{ name: 'Transcription', value: 'transcription' },
 				],
-				default: 'transcription',
+				default: 'audio',
 			},
 
 			...SpeechOperations,
 			...SpeechFields,
 
-			...AiOperations,
 			...AiFields,
 
 			...LlmOperations,
