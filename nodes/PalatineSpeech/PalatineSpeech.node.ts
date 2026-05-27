@@ -51,11 +51,10 @@ export class PalatineSpeech implements INodeType {
 			},
 
 			...SpeechOperations,
-			...SpeechFields,
-
-			...AiFields,
-
 			...LlmOperations,
+
+			...SpeechFields,
+			...AiFields,
 			...LlmFields,
 
 			...CommonFields,
