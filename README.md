@@ -1,4 +1,4 @@
-﻿![README banner](https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/docs/assets/Header.png)
+![README banner](https://github.com/palatine-vision/n8n-nodes-palatine-speech/blob/main/docs/assets/Header.png)
 
 # n8n-nodes-palatine-speech
 
@@ -84,7 +84,7 @@ Supported response formats:
 4. `Create record` -> Create a table record
 5. `Telegram` -> Send the result to a chat
 
-![workflow example](https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/blob/main/docs/assets/WorkflowExample.png)
+![workflow example](https://github.com/palatine-vision/n8n-nodes-palatine-speech/blob/main/docs/assets/WorkflowExample.png)
 
 ## Use Cases
 
