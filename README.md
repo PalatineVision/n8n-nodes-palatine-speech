@@ -19,7 +19,7 @@ This is an n8n community node that integrates [Palatine Speech](https://speech.p
 [License](#license)\
 [Support](#support)
 
-> Looking for a Russian version? [Here](https://gist.github.com/haxbxbdbhshs/b7dfc63659d0417b3d73d0b1d0a3002f)
+> Looking for a Russian version? [Here](https://gist.github.com/Valeronich/b5d116fd4ca251ff672eda7d2a530a61)
 
 ## Supported Operations
 
