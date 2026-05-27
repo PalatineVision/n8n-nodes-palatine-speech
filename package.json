@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-palatine-speech-test",
-  "version": "1.21.4",
+  "version": "1.1.0",
   "description": "n8n node for integrating Palatine Speech API into workflow",
   "license": "MIT",
   "homepage": "https://github.com/PalatineVision/n8n-nodes-palatine-speech#readme",
