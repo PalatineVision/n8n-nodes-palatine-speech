@@ -1,7 +1,9 @@
 {
   "name": "n8n-nodes-palatine-speech",
-  "version": "1.0.1",
-  "description": "Official n8n node for Palatine Speech API: transcription, diarization, sentiment analysis, summarization and more",
+  "version": "1.1.0",
+  "description": "n8n node for integrating Palatine Speech API into workflow",
+  "license": "MIT",
+  "homepage": "https://github.com/PalatineVision/n8n-nodes-palatine-speech#readme",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
@@ -25,47 +27,83 @@
     "audio-summarization",
     "sentiment-analysis",
     "emotion-detection",
-    "tone-analysis"
+    "tone-analysis",
+    "llm",
+    "chat-completions",
+    "openai-compatible",
+    "structured-output",
+    "json-schema"
   ],
-  "license": "MIT",
   "author": {
-    "name": "Palatine",
+    "name": "palatine_speech",
     "email": "palatine_vision@protonmail.com"
   },
-  "homepage": "https://speech.palatine.ru",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/PalatineVision/n8n-nodes-palatine-speech.git"
+    "url": "https://github.com/PalatineVision/n8n-nodes-palatine-speech.git"
   },
   "bugs": {
     "url": "https://github.com/PalatineVision/n8n-nodes-palatine-speech/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "icons",
+    "README.md",
+    "LICENSE.md",
+    "CODE_OF_CONDUCT.md"
   ],
   "scripts": {
-    "build": "tsc && npm run copy:assets",
-    "copy:assets": "node -e \"const fs=require('fs');const path=require('path');const files=['logoLight.svg','logoDark.svg'];const srcDir=path.join('nodes','PalatineSpeechNode');const dstDir=path.join('dist','nodes','PalatineSpeechNode');fs.mkdirSync(dstDir,{recursive:true});let ok=true;for(const f of files){const src=path.join(srcDir,f);const dst=path.join(dstDir,f);if(!fs.existsSync(src)){console.error('ERROR:',f,'not found at',src);ok=false;continue;}fs.copyFileSync(src,dst);console.log('OK: copied',src,'->',dst);}if(!ok) process.exit(1);\"",
-    "dev": "tsc --watch",
-    "prepack": "npm run build",
-    "prepublishOnly": "npm run build"
+    "build": "n8n-node build",
+    "build:watch": "tsc --watch",
+    "dev": "n8n-node dev",
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "prepack": "npm run lint && npm run build",
+    "release": "n8n-node release"
   },
   "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
     "credentials": [
       "dist/credentials/PalatineSpeechNodeApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/PalatineSpeechNode/PalatineSpeechNode.node.js"
+      "dist/nodes/PalatineSpeech/PalatineSpeech.node.js"
     ]
   },
   "devDependencies": {
-    "n8n-core": "^1.80.0",
-    "n8n-workflow": "^1.80.0",
-    "typescript": "^5.9.3"
+    "@n8n/node-cli": "^0.23.0",
+    "@types/node": "^25.2.0",
+    "eslint": "9.32.0",
+    "prettier": "3.6.2",
+    "release-it": "^19.0.4",
+    "typescript": "5.9.2"
   },
-  "engines": {
-    "node": ">=18.0.0"
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "release-it": {
+    "git": {
+      "commitMessage": "chore: release v${version}",
+      "tagName": "v${version}",
+      "requireCleanWorkingDir": true,
+      "requireUpstream": true
+    },
+    "github": {
+      "release": true
+    },
+    "npm": {
+      "publish": true,
+      "publishArgs": [
+        "--provenance",
+        "--access",
+        "public"
+      ]
+    }
   }
 }
