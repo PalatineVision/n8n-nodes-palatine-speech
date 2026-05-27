@@ -3,7 +3,7 @@
   "version": "1.21.4",
   "description": "n8n node for integrating Palatine Speech API into workflow",
   "license": "MIT",
-  "homepage": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n#readme",
+  "homepage": "https://github.com/PalatineVision/n8n-nodes-palatine-speech#readme",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
@@ -40,10 +40,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n.git"
+    "url": "https://github.com/PalatineVision/n8n-nodes-palatine-speech.git"
   },
   "bugs": {
-    "url": "https://github.com/haxbxbdbhshs/Palatine-Speech-Node-n8n/issues"
+    "url": "https://github.com/PalatineVision/n8n-nodes-palatine-speech/issues"
   },
   "publishConfig": {
     "access": "public"
