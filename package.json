@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-palatine-speech",
   "version": "1.1.0",
-  "description": "n8n node for integrating Palatine Speech API into workflow",
+  "description": "An n8n community node for integrating Palatine Speech into automation workflows. It enables audio and video processing tasks such as transcription, speaker diarization, sentiment analysis, summarization, and LLM-based processing directly inside n8n.",
   "license": "MIT",
   "homepage": "https://github.com/PalatineVision/n8n-nodes-palatine-speech#readme",
   "keywords": [
