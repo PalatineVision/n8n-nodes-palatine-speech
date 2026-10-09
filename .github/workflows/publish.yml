@@ -1,50 +1,68 @@
-# Publishes this n8n community node package to npm on every version tag push.
-#
-# Starting May 1 2026, n8n requires all community nodes to be published via
-# GitHub Actions with npm provenance statements. This workflow satisfies that
-# requirement. Provenance lets anyone cryptographically verify that a package
-# was built by this exact workflow, from this exact repository and commit.
-#
-# PREREQUISITES
-# - @n8n/node-cli >= 0.23.0
-#
-# ONE-TIME SETUP (recommended)
-# - Configure npm Trusted Publisher for this repository/workflow (publish.yml)
-#   so publishing can use GitHub OIDC (no long-lived NPM token).
-#
-# FALLBACK
-# - If needed, set NPM_TOKEN in repository Actions secrets.
-
-name: Publish
+name: Publish to npm
 
 on:
   push:
-    tags:
-      - '*.*.*'
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
 
 jobs:
   publish:
-    name: Publish to npm
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: npm
     permissions:
-      id-token: write
       contents: read
+      id-token: write
+    env:
+      SCANNER_VERSION: '0.38.0'
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
-          cache: 'npm'
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Release
+      - name: Validate release tag and main ancestry
         run: |
-          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
-          npm run release
+          node scripts/check-release.mjs
+          git merge-base --is-ancestor HEAD origin/main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      # npm >= 11.5.1 supports trusted publishing. No persistent npm token is needed.
+      - name: Check trusted publishing support
+        run: node -e "const [major,minor,patch]=require('child_process').execSync('npm --version').toString().trim().split('.').map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) throw new Error('Trusted publishing requires npm >= 11.5.1')"
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+
+      - name: Scan source and packed package before publishing
+        run: bash scripts/scan-package.sh
+
+      - name: Publish with provenance
+        run: npm publish --ignore-scripts --provenance --access public
+
+      - name: Verify published version
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          SCANNER_DIR: /tmp/n8n-scanner/node_modules/@n8n/scan-community-package
+        run: node scripts/verify-published.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-verification
+          path: |
+            .ci-artifacts/*.tgz
+            scan.log
+          if-no-files-found: ignore

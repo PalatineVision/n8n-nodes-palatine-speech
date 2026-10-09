@@ -6,4 +6,5 @@ dist/
 .DS_Store
 
 ui.mb
-package-lock.json
+.ci-artifacts/
+.npm/
