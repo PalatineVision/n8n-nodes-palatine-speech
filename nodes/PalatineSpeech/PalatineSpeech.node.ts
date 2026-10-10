@@ -1,4 +1,5 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { SpeechFields, SpeechOperations } from './descriptions/speech';
 import { AiFields } from './descriptions/ai';
@@ -19,11 +20,11 @@ export class PalatineSpeech implements INodeType {
 		version: [3],
 		defaultVersion: 3,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description:'An n8n community node for integrating Palatine Speech into automation workflows. It enables audio and video processing tasks such as transcription, speaker diarization, sentiment analysis, summarization, and LLM-based processing directly inside n8n.'
+		description:'An n8n community node for integrating Palatine Speech into automation workflows. It enables audio and video processing tasks such as transcription, speaker diarization, sentiment analysis, summarization, and LLM-based processing directly inside n8n.',
 		defaults: { name: 'Palatine Speech' },
 		usableAsTool: true,
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'palatineSpeechNodeApi', required: true }],
 		requestDefaults: {
 			method: 'POST',
