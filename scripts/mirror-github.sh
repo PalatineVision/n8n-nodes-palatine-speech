@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Never print credentials, force-push, mirror all refs, or change the release commit.
 set -euo pipefail
-: "${GITHUB_MIRROR_TOKEN:?Set the protected, masked GITHUB_MIRROR_TOKEN variable}"
+: "${CORPORATE_GITHUB_TOKEN:?Set the protected, masked CORPORATE_GITHUB_TOKEN variable}"
 : "${GITHUB_REPOSITORY:?Set GITHUB_REPOSITORY}"
 : "${CI_COMMIT_SHA:?This script must run in GitLab CI}"
 [ "${CI_COMMIT_REF_PROTECTED:-false}" = true ] || { echo 'Only protected refs may be mirrored'; exit 1; }
@@ -14,7 +14,7 @@ cat > "$askpass" <<'ASKPASS'
 #!/usr/bin/env sh
 case "$1" in
   *Username*) printf '%s\n' 'x-access-token' ;;
-  *Password*) printf '%s\n' "$GITHUB_MIRROR_TOKEN" ;;
+  *Password*) printf '%s\n' "$CORPORATE_GITHUB_TOKEN" ;;
   *) exit 1 ;;
 esac
 ASKPASS

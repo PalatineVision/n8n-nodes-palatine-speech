@@ -6,11 +6,11 @@ https://git.palatine.ru/palatine/speech-n8n-node (branch `main`).
 The public source used for npm provenance is:
 https://github.com/PalatineVision/n8n-nodes-palatine-speech.
 
-GitLab and GitHub accounts are independent. GitLab does not need an npm token.
+GitLab and GitHub accounts are independent. GitLab does not need an npm token. The existing corporate GitHub token is scoped to the github-mirror environment.
 
 ## Pipeline
 
-1. Branch and merge request pipelines run metadata validation, `npm ci`, lint, build, tests, and the n8n source/package scanner.
+1. Protected branch and protected-to-protected merge request pipelines run metadata validation, `npm ci`, lint, build, tests, and the n8n source/package scanner.
 2. A successful protected `main` pipeline pushes that commit to GitHub `main`. It does not publish.
 3. A protected stable tag `vX.Y.Z` runs all checks again. The tag must match both package manifests.
 4. A maintainer starts the blocking manual job `release-to-github`. It checks that the tagged commit belongs to GitLab main and is already present in GitHub main, then pushes that exact tag.
@@ -28,9 +28,10 @@ The initial CI integration commit retains both the GitLab and existing GitHub ma
 ## One-time GitLab setup
 
 - A Maintainer must apply the configuration to this project's main branch.
-- Enable a Linux Docker/Kubernetes runner that can use `node:24-bookworm`, run untagged jobs and reach npmjs.org and github.com. If the runner requires tags, add its actual tags under `default`.
+- The project uses protected Linux shell runner 174 with tag `d1`. Jobs bootstrap checksum-verified Node.js 24.11.1 under the job workspace; no system Node.js changes or sudo are needed. The host needs curl, tar/xz, sha256sum and access to nodejs.org, npmjs.org and github.com.
+- A Maintainer must protect trusted feature branches before their CI can use this runner. Unprotected branches and merge requests are intentionally skipped; use a separate isolated runner to add untrusted-branch CI. Keep the existing protected runner restriction.
 - Protect `main` and tags matching `v*`. Allow release-tag creation only for release maintainers.
-- In Settings > CI/CD > Variables add `GITHUB_MIRROR_TOKEN`: **Masked**, **Protected**, environment scope `github-mirror`. Disable variable expansion for this value.
+- In Settings > CI/CD > Variables add `CORPORATE_GITHUB_TOKEN`: **Masked**, **Protected**, environment scope `github-mirror`. Disable variable expansion for this value.
 - The token must belong to an account with write access to the public GitHub repository. Prefer a fine-grained token restricted to this repository with **Contents: Read and write** and **Workflows: Read and write**. Organization approval may be required.
 - `GITHUB_REPOSITORY` is declared in the YAML and must match package.json's public repository URL. Updating the mirror destination requires changing both.
 - Disable any separate repository push mirror for this project. The pipeline owns synchronization.
@@ -49,7 +50,7 @@ The mirror credential is scoped to the mirror jobs; dependency installation and 
   - Environment: `npm`
   - Allow direct `npm publish` if that option is shown.
 - The publisher must have permission for the existing package `n8n-nodes-palatine-speech`.
-- The GitHub workflow uses a GitHub-hosted runner and `id-token: write`. No `NPM_TOKEN` is required.
+- The GitHub workflow uses a GitHub-hosted runner and `id-token: write`. Trusted publishing is preferred; the existing `NPM_TOKEN` secret is passed only to the publish step as a fallback. Its validity can only be confirmed during a new release.
 - Do not change npm security settings or revoke existing tokens until the first trusted-publisher release is verified.
 
 The GitHub publish job deliberately fails if the version already exists on npm. If publication succeeded but verification failed, rerun GitLab's `verify-published` job after correcting the verification issue; do not delete/recreate release tags or republish the version.

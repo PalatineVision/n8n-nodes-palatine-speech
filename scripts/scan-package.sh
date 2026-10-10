@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-scanner_root=/tmp/n8n-scanner
+scanner_root="$PWD/.ci-tools/n8n-scanner"
 export SCANNER_DIR="$scanner_root/node_modules/@n8n/scan-community-package"
 npm install --prefix "$scanner_root" --no-audit --no-fund "@n8n/scan-community-package@${SCANNER_VERSION:-0.38.0}"
 

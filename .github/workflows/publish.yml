@@ -38,7 +38,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: npm
 
-      # npm >= 11.5.1 supports trusted publishing. No persistent npm token is needed.
+      # npm >= 11.5.1 supports trusted publishing; the existing NPM_TOKEN is available as fallback.
       - name: Check trusted publishing support
         run: node -e "const [major,minor,patch]=require('child_process').execSync('npm --version').toString().trim().split('.').map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) throw new Error('Trusted publishing requires npm >= 11.5.1')"
 
@@ -51,11 +51,13 @@ jobs:
         run: bash scripts/scan-package.sh
 
       - name: Publish with provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --ignore-scripts --provenance --access public
 
       - name: Verify published version
         env:
-          SCANNER_DIR: /tmp/n8n-scanner/node_modules/@n8n/scan-community-package
+          SCANNER_DIR: .ci-tools/n8n-scanner/node_modules/@n8n/scan-community-package
         run: node scripts/verify-published.mjs
 
       - uses: actions/upload-artifact@v4
