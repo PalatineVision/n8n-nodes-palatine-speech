@@ -42,12 +42,12 @@ The mirror credential is scoped to the mirror jobs; dependency installation and 
 ## One-time GitHub and npm setup
 
 - Keep the GitHub repository public. Enable Actions and ensure repository rules allow the mirror account to push main and the selected release tags.
-- Create the GitHub environment `npm`. Optional reviewers add another release approval; if approval waits, GitLab's registry verification may time out and can be retried after publication.
+- No GitHub environment is required. Release approval is the protected manual GitLab job. The existing repository-level `NPM_TOKEN` remains available to the publish step.
 - In npm package settings configure a **GitHub Actions trusted publisher**:
   - Organization: `PalatineVision`
   - Repository: `n8n-nodes-palatine-speech`
   - Workflow filename: `publish.yml`
-  - Environment: `npm`
+  - Environment: leave empty (the workflow does not select an environment)
   - Allow direct `npm publish` if that option is shown.
 - The publisher must have permission for the existing package `n8n-nodes-palatine-speech`.
 - The GitHub workflow uses a GitHub-hosted runner and `id-token: write`. Trusted publishing is preferred; the existing `NPM_TOKEN` secret is passed only to the publish step as a fallback. Its validity can only be confirmed during a new release.
