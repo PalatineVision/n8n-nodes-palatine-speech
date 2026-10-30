@@ -65,11 +65,11 @@ Fix known release-blocking issues first. From an up-to-date, clean checkout of G
 4. Wait for the tag's check and scan jobs, then start `release-to-github`.
 5. Confirm GitHub publication and GitLab `verify-published` both succeed.
 
-Use a new, unused version; the example is not an instruction to publish 1.2.0 now. Do not use the existing `npm run release` command for this flow: its local release-it configuration can publish directly and create a GitHub release.
+Use a new, unused version. Do not use the existing `npm run release` command for this flow: its local release-it configuration can publish directly and create a GitHub release.
 
 ## Validation performed locally
 
-The configuration can be parsed as YAML, shell scripts can be checked with Bash, release guards are covered by `tests/release.test.cjs`, and lint, build and the local scanner can be run without publishing. This CI branch keeps the GitLab package version and application behavior; the separate local polling changes are not included. Server-specific runner availability, protected refs, environment variables, GitHub permissions and npm trusted-publisher settings require authenticated access to those services.
+The configuration can be parsed as YAML, shell scripts can be checked with Bash, release guards are covered by `tests/release.test.cjs`, and lint, build and the local scanner can be run without publishing. Polling and runtime regressions are covered by `tests/polling.test.cjs`. Server-specific runner availability, protected refs, environment variables, GitHub permissions and npm trusted-publisher settings require authenticated access to those services.
 
 ## References
 

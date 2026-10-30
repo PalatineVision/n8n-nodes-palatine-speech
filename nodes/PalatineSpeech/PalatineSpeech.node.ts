@@ -8,6 +8,9 @@ import { CommonFields } from './descriptions/common';
 
 import { getLlmModels } from './GenericFunctions';
 
+const NODE_KEYWORDS =
+	'n8n-community-node-package, n8n, palatine, speech-to-text, transcribe, transcription, stt, audio, ai, automation, voice-to-text, speech-recognition, audio-transcription, audio2text, audio-processing, diarization, speaker-diarization, speaker-segmentation, summarization, audio-summarization, sentiment-analysis, emotion-detection, tone-analysis, llm, chat-completions, openai-compatible, structured-output, json-schema';
+
 export class PalatineSpeech implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Palatine Speech',
@@ -20,7 +23,8 @@ export class PalatineSpeech implements INodeType {
 		version: [3],
 		defaultVersion: 3,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description:'An n8n community node for integrating Palatine Speech into automation workflows. It enables audio and video processing tasks such as transcription, speaker diarization, sentiment analysis, summarization, and LLM-based processing directly inside n8n.',
+		description:
+			`Transcribe audio, diarize speakers, analyze sentiment, generate AI summaries, or use OpenAI-compatible LLM Chat Completions via Palatine. Keywords: ${NODE_KEYWORDS}`,
 		defaults: { name: 'Palatine Speech' },
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],

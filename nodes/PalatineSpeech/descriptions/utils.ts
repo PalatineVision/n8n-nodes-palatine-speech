@@ -8,18 +8,10 @@ import type {
 } from 'n8n-workflow';
 
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { getPollingConfig } from './polling';
+import type { TaskKind } from './polling';
 
 type AnyRecord = Record<string, unknown>;
-
-type TaskKind = 'transcribe' | 'diarize' | 'sentiment' | 'summarize';
-
-type PollDefaults = { pollIntervalMs: number; maxPollAttempts: number };
-const TASK_POLL_DEFAULTS: Record<TaskKind, PollDefaults> = {
-	transcribe: { pollIntervalMs: 500, maxPollAttempts: 200 },
-	diarize: { pollIntervalMs: 500, maxPollAttempts: 200 },
-	sentiment: { pollIntervalMs: 500, maxPollAttempts: 200 },
-	summarize: { pollIntervalMs: 20000, maxPollAttempts: 500 },
-};
 
 export function toJsonError(error: unknown): JsonObject {
 	if (error instanceof Error) {
@@ -199,31 +191,16 @@ function taskKindForOperation(operation: string): TaskKind {
 	}
 }
 
-function getPollingConfig(this: IExecuteSingleFunctions, taskKind: TaskKind): PollDefaults {
-	const polling = (this.getNodeParameter('polling', {}) as IDataObject) ?? {};
-	let pollIntervalMs = Number((polling as AnyRecord).pollIntervalMs ?? 500);
-	let maxPollAttempts = Number((polling as AnyRecord).maxPollAttempts ?? 200);
-
-	const defaults = TASK_POLL_DEFAULTS[taskKind];
-
-	if (taskKind === 'summarize') {
-		if (pollIntervalMs === 500 || pollIntervalMs === 1000) pollIntervalMs = defaults.pollIntervalMs;
-		if (maxPollAttempts === 200 || maxPollAttempts === 300) maxPollAttempts = defaults.maxPollAttempts;
-	} else {
-		if (pollIntervalMs === 1000) pollIntervalMs = defaults.pollIntervalMs;
-		if (maxPollAttempts === 300) maxPollAttempts = defaults.maxPollAttempts;
-	}
-
-	pollIntervalMs = Math.min(900000, Math.max(500, pollIntervalMs));
-	maxPollAttempts = Math.min(1000, Math.max(1, maxPollAttempts));
-
-	return { pollIntervalMs, maxPollAttempts };
-}
-
-async function authedRequest(this: IExecuteSingleFunctions, options: IHttpRequestOptions): Promise<unknown> {
+async function authedRequest(
+	this: IExecuteSingleFunctions,
+	options: IHttpRequestOptions,
+	// Lets the caller throw a more specific error (timeout, cancellation) instead of the HTTP error.
+	beforeWrapError?: () => void,
+): Promise<unknown> {
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'palatineSpeechNodeApi', options);
 	} catch (error) {
+		beforeWrapError?.();
 		throw new NodeApiError(this.getNode(), toJsonError(error));
 	}
 }
@@ -320,14 +297,58 @@ async function pollTask(
 	if (!baseUrl) throw new NodeOperationError(this.getNode(), 'Credential "Base URL" is empty.');
 
 	const taskKind = taskKindForOperation(operation);
-	const { pollIntervalMs, maxPollAttempts } = getPollingConfig.call(this, taskKind);
+	const { pollIntervalMs, maxPollAttempts, maxWaitMs } = getPollingConfig.call(this, taskKind);
+	const deadline = Date.now() + maxWaitMs;
+	const signal = this.getExecutionCancelSignal?.();
+	const checkCancellation = () => {
+		if (signal?.aborted) throw new NodeOperationError(this.getNode(), `Waiting for task ${taskId} was cancelled.`);
+	};
+	const timeoutError = () => new NodeOperationError(
+		this.getNode(),
+		`Task ${taskId} did not complete within the maximum wait time (${maxWaitMs / 1000} seconds).`,
+		{ description: 'The API task may still be running. Increase Polling Options > Max Wait Time (Seconds) for future executions.' },
+	);
+	const requestBeforeDeadline = async (options: IHttpRequestOptions): Promise<unknown> => {
+		checkCancellation();
+		const remainingMs = deadline - Date.now();
+		if (remainingMs <= 0) throw timeoutError();
+		const checkStillWaiting = () => {
+			checkCancellation();
+			if (Date.now() >= deadline) throw timeoutError();
+		};
+		const target = new URL(options.url);
+		if (!['https:', 'http:'].includes(target.protocol) || target.username || target.password) {
+			throw new NodeOperationError(this.getNode(), 'Invalid task result URL.');
+		}
+		const sameOrigin = target.origin === new URL(baseUrl).origin;
+		const requestOptions = {
+			...options,
+			timeout: Math.min(300000, remainingMs),
+			abortSignal: signal,
+			// Never forward credentials through an API redirect to another origin.
+			disableFollowRedirect: true,
+		};
+		let result: unknown;
+		if (sameOrigin) {
+			result = await authedRequest.call(this, requestOptions, checkStillWaiting);
+		} else {
+			try {
+				result = await this.helpers.httpRequest(requestOptions);
+			} catch (error) {
+				checkStillWaiting();
+				throw new NodeApiError(this.getNode(), toJsonError(error));
+			}
+		}
+		checkStillWaiting();
+		return result;
+	};
 
 	const statusUrl = `${baseUrl}${statusPathForOperation(operation, taskId)}`;
 
 	let statusPayload: unknown = null;
 
-	for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
-		statusPayload = await authedRequest.call(this, { method: 'GET', url: statusUrl, json: true });
+	for (let attempt = 1; maxPollAttempts === 0 || attempt <= maxPollAttempts; attempt++) {
+		statusPayload = await requestBeforeDeadline({ method: 'GET', url: statusUrl, json: true });
 
 		if (isTerminalFailure(statusPayload)) {
 			throw new NodeOperationError(this.getNode(), `Task ${taskId} failed.`);
@@ -340,7 +361,7 @@ async function pollTask(
 			if (operation === 'diarize' && responseFormatForDiarize && responseFormatForDiarize !== 'json') {
 				// 1) try statusUrl with qs
 				try {
-					const raw = await authedRequest.call(this, {
+					const raw = await requestBeforeDeadline({
 						method: 'GET',
 						url: statusUrl,
 						qs: { response_format: responseFormatForDiarize },
@@ -365,7 +386,7 @@ async function pollTask(
 				const downloadUrl = findFirstUrl(statusPayload);
 				if (downloadUrl) {
 					try {
-						const downloaded = await authedRequest.call(this, {
+						const downloaded = await requestBeforeDeadline({
 							method: 'GET',
 							url: downloadUrl,
 							qs: { response_format: responseFormatForDiarize },
@@ -388,15 +409,24 @@ async function pollTask(
 				}
 			}
 
+			checkCancellation();
+			if (Date.now() >= deadline) throw timeoutError();
 			return { finalResponse, statusPayload };
 		}
 
-		await sleep(pollIntervalMs);
+		if (maxPollAttempts > 0 && attempt === maxPollAttempts) break;
+		const wakeAt = Math.min(deadline, Date.now() + pollIntervalMs);
+		while (Date.now() < wakeAt) {
+			checkCancellation();
+			// Check cancellation during long intervals without accumulating abort listeners.
+			await sleep(Math.min(1000, wakeAt - Date.now()));
+		}
 	}
 
 	throw new NodeOperationError(
 		this.getNode(),
 		`Task ${taskId} did not complete within polling limit (${maxPollAttempts} attempts).`,
+		{ description: 'The API task may still be running. Increase Max Poll Attempts or set it to 0 to use only the maximum wait time.' },
 	);
 }
 
@@ -510,9 +540,11 @@ export async function preSendFile(
 	requestOptions: IHttpRequestOptions,
 	extra?: (formData: FormData) => void,
 ): Promise<IHttpRequestOptions> {
+	// Validate before creating a remote task, so invalid options do not leave an orphaned job.
+	getPollingConfig.call(this, taskKindForOperation(String(this.getNodeParameter('operation', ''))));
 	const binaryProperty = this.getNodeParameter('binaryProperty', 'data') as string;
 
-	const item = this.getInputData()[0] as INodeExecutionData;
+	const item = this.getInputData();
 	const binary = item?.binary?.[binaryProperty];
 
 	const fileName = String(binary?.fileName || 'audio');
@@ -546,6 +578,7 @@ export async function preSendSummarizeText(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
+	getPollingConfig.call(this, 'summarize');
 	const text = String(this.getNodeParameter('text', '') || '').trim();
 	if (!text) throw new NodeOperationError(this.getNode(), 'Summarize (Text): "Text" is empty.');
 
@@ -577,10 +610,61 @@ function tryParseJsonFromContent(content: string): { ok: boolean; value: unknown
 	}
 }
 
+function checkSchemaSupport(schema: unknown, path: string, errors: string[], depth = 0): void {
+	if (depth > 12) {
+		errors.push(`${path}: schema nesting exceeds the supported depth (12)`);
+		return;
+	}
+	if (!isPlainObject(schema)) {
+		errors.push(`${path}: only object schemas are supported locally`);
+		return;
+	}
+	const supported = ['type', 'properties', 'required', 'additionalProperties', 'items', 'enum', 'const', 'title', 'description', 'default', 'examples', '$comment'];
+	for (const key of Object.keys(schema)) {
+		if (!supported.includes(key)) errors.push(`${path}: unsupported schema keyword "${key}"; local validation is incomplete`);
+	}
+	if (schema.type !== undefined && !['object', 'array', 'string', 'number', 'integer', 'boolean', 'null'].includes(String(schema.type))) {
+		errors.push(`${path}: unsupported schema type`);
+	}
+	if (schema.type !== undefined && typeof schema.type !== 'string') errors.push(`${path}: schema type must be a string`);
+	if ('enum' in schema && (!Array.isArray(schema.enum) || !schema.enum.length)) errors.push(`${path}: enum must be a nonempty array`);
+	if ('properties' in schema || 'required' in schema || 'additionalProperties' in schema) {
+		if (schema.type !== 'object') errors.push(`${path}: object constraints require explicit type "object" locally`);
+		if ('properties' in schema && !isPlainObject(schema.properties)) errors.push(`${path}: properties must be an object`);
+		if ('required' in schema && (!Array.isArray(schema.required) || !schema.required.every((key) => typeof key === 'string'))) errors.push(`${path}: required must be an array of strings`);
+		if ('additionalProperties' in schema && typeof schema.additionalProperties !== 'boolean') errors.push(`${path}: only boolean additionalProperties is supported locally`);
+		if (isPlainObject(schema.properties)) {
+			for (const [key, child] of Object.entries(schema.properties)) checkSchemaSupport(child, `${path}.${key}`, errors, depth + 1);
+		}
+	}
+	if ('items' in schema) {
+		if (schema.type !== 'array') errors.push(`${path}: items requires explicit type "array" locally`);
+		checkSchemaSupport(schema.items, `${path}[]`, errors, depth + 1);
+	}
+}
+
+function jsonEqual(left: unknown, right: unknown): boolean {
+	if (left === right) return true;
+	if (Array.isArray(left) && Array.isArray(right)) return left.length === right.length && left.every((item, index) => jsonEqual(item, right[index]));
+	if (isPlainObject(left) && isPlainObject(right)) {
+		return Object.keys(left).length === Object.keys(right).length && Object.keys(left).every((key) => Object.hasOwn(right, key) && jsonEqual(left[key], right[key]));
+	}
+	return false;
+}
+
 function validateSimpleJsonSchema(value: unknown, schema: AnyRecord, path: string, errors: string[], depth = 0): void {
-	if (depth > 12) return;
+	if (depth > 12) {
+		errors.push(`${path}: schema nesting exceeds the supported depth (12)`);
+		return;
+	}
+	if (Array.isArray(schema.enum) && !schema.enum.some((entry) => jsonEqual(value, entry))) errors.push(`${path} must match an enum value`);
+	if ('const' in schema && !jsonEqual(value, schema.const)) errors.push(`${path} must match const`);
 
 	const type = typeof schema.type === 'string' ? schema.type : undefined;
+	if (type === 'null') {
+		if (value !== null) errors.push(`${path} must be null`);
+		return;
+	}
 
 	if (type === 'object' || (!type && 'properties' in schema)) {
 		if (!isPlainObject(value)) {
@@ -794,7 +878,8 @@ export async function postReceiveLlmChat(
 		} else if (!parsedTry.ok) {
 			errors.push(`Output is not valid JSON: ${parsedTry.error ?? 'unknown error'}`);
 		} else {
-			validateSimpleJsonSchema(parsedTry.value, schemaObj.schema as AnyRecord, '$', errors);
+			checkSchemaSupport(schemaObj.schema, '$', errors);
+			if (!errors.length) validateSimpleJsonSchema(parsedTry.value, schemaObj.schema as AnyRecord, '$', errors);
 		}
 
 		return {
